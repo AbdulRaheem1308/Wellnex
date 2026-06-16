@@ -118,9 +118,11 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   await app.listen(port, "0.0.0.0");
 
-  Logger.log(`🚀 Wellnex API running on: http://localhost:${port}`);
-  Logger.log(`📚 API Base URL: http://localhost:${port}/api/v1`);
-  Logger.log(`📖 Swagger API Docs: http://localhost:${port}/api/docs`);
+  const baseUrl = process.env.RENDER_EXTERNAL_URL || process.env.APP_URL || `http://localhost:${port}`;
+
+  Logger.log(`🚀 Wellnex API running on: ${baseUrl}`);
+  Logger.log(`📚 API Base URL: ${baseUrl}/api/v1`);
+  Logger.log(`📖 Swagger API Docs: ${baseUrl}/api/docs`);
 }
 
 bootstrap();

@@ -59,31 +59,55 @@ class StorageService {
   }
 
   /// Returns the stored access token, or `null` if none exists.
-  static Future<String?> getAccessToken() =>
-      _secureStorage.read(key: AppConstants.accessTokenKey);
+  static Future<String?> getAccessToken() async {
+    try {
+      return await _secureStorage.read(key: AppConstants.accessTokenKey);
+    } catch (e) {
+      debugPrint('StorageService: Error reading access token: $e');
+      await _secureStorage.deleteAll().catchError((_) {});
+      return null;
+    }
+  }
 
   /// Returns the stored refresh token, or `null` if none exists.
-  static Future<String?> getRefreshToken() =>
-      _secureStorage.read(key: AppConstants.refreshTokenKey);
+  static Future<String?> getRefreshToken() async {
+    try {
+      return await _secureStorage.read(key: AppConstants.refreshTokenKey);
+    } catch (e) {
+      debugPrint('StorageService: Error reading refresh token: $e');
+      return null;
+    }
+  }
 
   /// Deletes both tokens from the secure enclave.
   static Future<void> clearTokens() async {
-    await Future.wait([
-      _secureStorage.delete(key: AppConstants.accessTokenKey),
-      _secureStorage.delete(key: AppConstants.refreshTokenKey),
-    ]);
+    try {
+      await Future.wait([
+        _secureStorage.delete(key: AppConstants.accessTokenKey),
+        _secureStorage.delete(key: AppConstants.refreshTokenKey),
+      ]);
+    } catch (e) {
+      debugPrint('StorageService: Error clearing tokens: $e');
+    }
   }
 
   /// Returns a stable device UUID, creating one if it does not yet exist.
   static Future<String> getOrCreateDeviceUUID() async {
-    String? uuidStr =
-        await _secureStorage.read(key: AppConstants.deviceUuidKey);
-    if (uuidStr == null) {
-      uuidStr = const Uuid().v4();
-      await _secureStorage.write(
-          key: AppConstants.deviceUuidKey, value: uuidStr);
+    try {
+      String? uuidStr = await _secureStorage.read(key: AppConstants.deviceUuidKey);
+      if (uuidStr == null) {
+        uuidStr = const Uuid().v4();
+        await _secureStorage.write(key: AppConstants.deviceUuidKey, value: uuidStr);
+      }
+      return uuidStr;
+    } catch (e) {
+      debugPrint('StorageService: Error reading device UUID: $e');
+      final uuidStr = const Uuid().v4();
+      try {
+        await _secureStorage.write(key: AppConstants.deviceUuidKey, value: uuidStr);
+      } catch (_) {}
+      return uuidStr;
     }
-    return uuidStr;
   }
 
   // ── Hive Storage ───────────────────────────────────────────────────────────

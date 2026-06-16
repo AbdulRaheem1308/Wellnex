@@ -28,22 +28,29 @@ class _SplashScreenState extends State<SplashScreen> {
     
     if (!mounted) return;
     
-    // Check if onboarding is complete
-    final onboardingComplete = StorageService.isOnboardingComplete();
-    if (!onboardingComplete) {
-      context.go(AppRoutes.onboarding);
-      return;
-    }
-    
-    // Check if user is logged in
-    final token = await StorageService.getAccessToken();
-    
-    if (!mounted) return;
+    try {
+      // Check if onboarding is complete
+      final onboardingComplete = StorageService.isOnboardingComplete();
+      if (!onboardingComplete) {
+        context.go(AppRoutes.onboarding);
+        return;
+      }
+      
+      // Check if user is logged in
+      final token = await StorageService.getAccessToken();
+      
+      if (!mounted) return;
 
-    if (token != null) {
-      context.go(AppRoutes.home);
-    } else {
-      context.go(AppRoutes.login);
+      if (token != null) {
+        context.go(AppRoutes.home);
+      } else {
+        context.go(AppRoutes.login);
+      }
+    } catch (e) {
+      debugPrint("Splash Screen: Error during auth check: $e");
+      if (mounted) {
+        context.go(AppRoutes.login);
+      }
     }
   }
 
