@@ -1,3 +1,6 @@
+// IMPORTANT: Make sure to import `instrument.ts` at the top of your file.
+import "./instrument.ts";
+
 // Start OpenTelemetry SDK first
 import { otelSDK } from "./tracing";
 otelSDK.start();
@@ -7,20 +10,12 @@ import { ValidationPipe, Logger } from "@nestjs/common";
 import { AppModule } from "./app.module";
 import helmet from "helmet";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
-import * as Sentry from "@sentry/nestjs";
 import {
   WinstonModule,
   utilities as nestWinstonModuleUtilities,
 } from "nest-winston";
 import * as winston from "winston";
 import { SentryExceptionFilter } from "./common/filters/sentry-exception.filter";
-
-// Initialize Sentry before anything else
-Sentry.init({
-  dsn: process.env.SENTRY_DSN || "https://mockDsnKey@o0.ingest.sentry.io/0",
-  environment: process.env.NODE_ENV || "development",
-  tracesSampleRate: 1,
-});
 
 async function bootstrap() {
   // Strip console logs in production for security and performance

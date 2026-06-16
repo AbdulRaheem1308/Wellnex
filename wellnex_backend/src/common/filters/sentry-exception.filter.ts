@@ -8,6 +8,7 @@ import { BaseExceptionFilter } from "@nestjs/core";
 import * as Sentry from "@sentry/nestjs";
 import { I18nService } from "nestjs-i18n";
 import { Request, Response } from "express";
+import { SentryExceptionCaptured } from "@sentry/nestjs";
 
 @Catch()
 export class SentryExceptionFilter extends BaseExceptionFilter {
@@ -18,6 +19,7 @@ export class SentryExceptionFilter extends BaseExceptionFilter {
     super(applicationRef);
   }
 
+  @SentryExceptionCaptured()
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -29,7 +31,7 @@ export class SentryExceptionFilter extends BaseExceptionFilter {
       : HttpStatus.INTERNAL_SERVER_ERROR;
 
     if (status >= 500 || !isHttpException) {
-      Sentry.captureException(exception);
+      // Sentry is now capturing exceptions automatically via @SentryExceptionCaptured()
     }
 
     // Custom translation logic

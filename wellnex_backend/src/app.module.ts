@@ -36,6 +36,7 @@ import { HealthController } from "./health.controller";
 
 // Services
 import { KeepAwakeService } from "./keep-awake.service";
+import { SentryModule } from "@sentry/nestjs/setup";
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { KeepAwakeService } from "./keep-awake.service";
       envFilePath: ".env",
     }),
     ScheduleModule.forRoot(),
+    SentryModule.forRoot(),
 
     // Internationalization (i18n)
     I18nModule.forRoot({
