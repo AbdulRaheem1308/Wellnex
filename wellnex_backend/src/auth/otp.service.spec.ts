@@ -170,7 +170,7 @@ describe("OtpService", () => {
         await service.sendEmailOtp("test@test.com", "555555");
         expect(loggerLogSpy).toHaveBeenCalledWith("Code: 555555");
         expect(loggerLogSpy).toHaveBeenCalledWith(
-          "EMAIL OTP for test@test.com",
+          "DEV MODE - OTP for test@test.com",
         );
       });
     });
