@@ -11,7 +11,8 @@ import workmanager_apple
     GeneratedPluginRegistrant.register(with: self)
     
     // Register background sync task identifier
-    WorkmanagerPlugin.registerTask(withIdentifier: "wellnex.backgroundSync")
+    WorkmanagerPlugin.registerBGProcessingTask(withIdentifier: "wellnex.backgroundSync")
+    WorkmanagerPlugin.registerPeriodicTask(withIdentifier: "wellnex.backgroundSync", frequency: NSNumber(value: 20 * 60))
     
     // Set minimum background fetch interval (15 minutes)
     UIApplication.shared.setMinimumBackgroundFetchInterval(TimeInterval(60 * 15))
