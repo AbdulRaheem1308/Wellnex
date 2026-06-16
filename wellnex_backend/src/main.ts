@@ -1,5 +1,5 @@
 // IMPORTANT: Make sure to import `instrument.ts` at the top of your file.
-import "./instrument.ts";
+import "./instrument";
 
 // Start OpenTelemetry SDK first
 import { otelSDK } from "./tracing";

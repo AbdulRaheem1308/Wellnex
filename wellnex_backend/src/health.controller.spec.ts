@@ -19,10 +19,10 @@ describe("HealthController", () => {
   it("should return health status", () => {
     // Mock date to ensure consistent timestamp testing if needed,
     // or just check for existence of properties.
-    const result = controller.check();
+    const result = controller.checkHealth();
 
     expect(result.status).toBe("ok");
-    expect(result.service).toBe("wellnex-api");
+    expect(result.service).toBe("Wellnex API");
     expect(result.version).toBe("1.0.0");
     expect(result.timestamp).toBeDefined();
 

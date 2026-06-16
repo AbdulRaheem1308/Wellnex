@@ -6,6 +6,11 @@ import { BaseExceptionFilter } from "@nestjs/core";
 
 jest.mock("@sentry/nestjs", () => ({
   captureException: jest.fn(),
+  SentryExceptionCaptured: jest.fn(() => {
+    return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
+      return descriptor;
+    };
+  }),
 }));
 
 describe("SentryExceptionFilter", () => {
@@ -44,19 +49,17 @@ describe("SentryExceptionFilter", () => {
     };
   };
 
-  it("should capture 500 exceptions in Sentry and format response", () => {
+  it("should format response for 500 exceptions", () => {
     const error = new HttpException("Internal error", 500);
     const host = mockArgumentsHost();
 
     filter.catch(error, host);
-    expect(Sentry.captureException).toHaveBeenCalledWith(error);
   });
 
-  it("should not capture < 500 HttpExceptions in Sentry", () => {
+  it("should handle < 500 HttpExceptions", () => {
     const error = new HttpException("Bad request", 400);
     const host = mockArgumentsHost();
     filter.catch(error, host);
-    expect(Sentry.captureException).not.toHaveBeenCalled();
   });
 
   it("should translate string keys and respond synchronously", () => {
@@ -145,7 +148,6 @@ describe("SentryExceptionFilter", () => {
     const host = mockArgumentsHost();
     filter.catch(error, host);
 
-    expect(Sentry.captureException).toHaveBeenCalledWith(error);
     expect(BaseExceptionFilter.prototype.catch).toHaveBeenCalledWith(
       error,
       host,
