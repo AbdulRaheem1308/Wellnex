@@ -15,7 +15,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-14
     env:
       PROJECT_DIR: wellnex_app
 
