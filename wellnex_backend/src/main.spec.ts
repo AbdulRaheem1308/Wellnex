@@ -27,6 +27,8 @@ jest.mock("./tracing", () => ({
   otelSDK: { start: jest.fn() },
 }));
 
+jest.mock("./instrument", () => ({}));
+
 jest.mock("@sentry/nestjs", () => ({
   init: jest.fn(),
 }));
@@ -97,6 +99,7 @@ describe("Main Bootstrap", () => {
 
     jest.mock("./app.module", () => ({ AppModule: class {} }));
     jest.mock("./tracing", () => ({ otelSDK: { start: jest.fn() } }));
+    jest.mock("./instrument", () => ({}));
     jest.mock("@sentry/nestjs", () => ({ init: jest.fn() }));
     jest.mock("./common/filters/sentry-exception.filter", () => ({
       SentryExceptionFilter: class {},
