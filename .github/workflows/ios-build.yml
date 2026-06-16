@@ -15,15 +15,14 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-15
     env:
       PROJECT_DIR: wellnex_app
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Select Xcode 15.4
-      run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
+
 
     - name: Set up Flutter
       uses: subosito/flutter-action@v2
