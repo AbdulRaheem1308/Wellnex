@@ -100,7 +100,10 @@ describe("QuestsService", () => {
 
     it("should create new user quest if not joined", async () => {
       mockPrismaService.userQuest.findUnique.mockResolvedValueOnce(null);
-      mockPrismaService.quest.findUnique.mockResolvedValueOnce({ id: "q1", stages: [{ durationDays: 1 }] });
+      mockPrismaService.quest.findUnique.mockResolvedValueOnce({
+        id: "q1",
+        stages: [{ durationDays: 1 }],
+      });
       mockPrismaService.userQuest.create.mockResolvedValueOnce({ id: "uq2" });
       const result = await service.joinQuest("user1", "q1");
       expect(result).toEqual({ id: "uq2" });
@@ -164,7 +167,9 @@ describe("QuestsService", () => {
           },
         },
       ]);
-      mockPrismaService.userQuest.updateMany.mockResolvedValueOnce({ count: 1 });
+      mockPrismaService.userQuest.updateMany.mockResolvedValueOnce({
+        count: 1,
+      });
       mockPrismaService.notification.create.mockResolvedValueOnce({});
 
       await service.processQuestProgress("user1", 5000);
@@ -213,27 +218,35 @@ describe("QuestsService", () => {
   describe("revive", () => {
     it("should throw if userQuest not found", async () => {
       mockPrismaService.userQuest.findUnique.mockResolvedValueOnce(null);
-      await expect(service.revive("user1", "quest1", "COINS")).rejects.toThrow(NotFoundException);
+      await expect(service.revive("user1", "quest1", "COINS")).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it("should throw if quest does not need revival", async () => {
       mockPrismaService.userQuest.findUnique.mockResolvedValueOnce({
         status: "IN_PROGRESS",
-        quest: { stages: [{ durationDays: 1 }] }
+        quest: { stages: [{ durationDays: 1 }] },
       });
-      await expect(service.revive("user1", "quest1", "COINS")).rejects.toThrow(BadRequestException);
+      await expect(service.revive("user1", "quest1", "COINS")).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it("should revive quest with COINS", async () => {
       mockPrismaService.userQuest.findUnique.mockResolvedValueOnce({
         status: "NEEDS_REVIVAL",
         currentStageIndex: 0,
-        quest: { stages: [{ durationDays: 1 }] }
+        quest: { stages: [{ durationDays: 1 }] },
       });
-      mockPrismaService.wallet.findUnique.mockResolvedValueOnce({ balance: 100 });
+      mockPrismaService.wallet.findUnique.mockResolvedValueOnce({
+        balance: 100,
+      });
       mockPrismaService.wallet.update.mockResolvedValueOnce({});
       mockPrismaService.transaction.create.mockResolvedValueOnce({});
-      mockPrismaService.userQuest.update.mockResolvedValueOnce({ status: "IN_PROGRESS" });
+      mockPrismaService.userQuest.update.mockResolvedValueOnce({
+        status: "IN_PROGRESS",
+      });
 
       const result = await service.revive("user1", "quest1", "COINS");
       expect(result).toEqual({ status: "IN_PROGRESS" });
@@ -245,15 +258,19 @@ describe("QuestsService", () => {
   describe("restart", () => {
     it("should throw if userQuest not found", async () => {
       mockPrismaService.userQuest.findUnique.mockResolvedValueOnce(null);
-      await expect(service.restart("user1", "quest1")).rejects.toThrow(NotFoundException);
+      await expect(service.restart("user1", "quest1")).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it("should restart quest", async () => {
       mockPrismaService.userQuest.findUnique.mockResolvedValueOnce({
         currentStageIndex: 0,
-        quest: { stages: [{ durationDays: 1 }] }
+        quest: { stages: [{ durationDays: 1 }] },
       });
-      mockPrismaService.userQuest.update.mockResolvedValueOnce({ status: "IN_PROGRESS" });
+      mockPrismaService.userQuest.update.mockResolvedValueOnce({
+        status: "IN_PROGRESS",
+      });
 
       const result = await service.restart("user1", "quest1");
       expect(result).toEqual({ status: "IN_PROGRESS" });

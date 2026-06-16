@@ -8,7 +8,9 @@ import {
 
 export class SendOtpDto {
   @IsOptional()
-  @IsPhoneNumber("IN", { message: "Phone number must be a valid Indian mobile number (+91)" })
+  @IsPhoneNumber("IN", {
+    message: "Phone number must be a valid Indian mobile number (+91)",
+  })
   phone?: string;
 
   @IsOptional()
@@ -18,7 +20,9 @@ export class SendOtpDto {
 
 export class VerifyOtpDto {
   @IsOptional()
-  @IsPhoneNumber("IN", { message: "Phone number must be a valid Indian mobile number (+91)" })
+  @IsPhoneNumber("IN", {
+    message: "Phone number must be a valid Indian mobile number (+91)",
+  })
   phone?: string;
 
   @IsOptional()

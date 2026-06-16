@@ -162,8 +162,14 @@ export class RewardsController {
    * POST /api/v1/rewards/sync-force
    */
   @Post("sync-force")
-  @ApiOperation({ summary: "Force rewards sync processing immediately without waiting for scheduler" })
-  @ApiResponse({ status: 200, description: "Rewards sync processed successfully" })
+  @ApiOperation({
+    summary:
+      "Force rewards sync processing immediately without waiting for scheduler",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Rewards sync processed successfully",
+  })
   async forceSyncRewards(@Query("userId") userId?: string) {
     return this.rewardsService.forceRewardsSync(userId);
   }

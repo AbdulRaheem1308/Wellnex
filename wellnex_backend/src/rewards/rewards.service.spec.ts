@@ -251,8 +251,14 @@ describe("RewardsService", () => {
       mockPrisma.streak.update.mockResolvedValue({});
       mockPrisma.streak.create.mockResolvedValue({});
       mockPrisma.step.findMany.mockResolvedValue([]);
-      mockPrisma.step.aggregate.mockResolvedValue({ _sum: { stepCount: 1000 } });
-      mockPrisma.wallet.findUnique.mockResolvedValue({ lifetimePoints: 500, balance: 500, lastResetDate: new Date() });
+      mockPrisma.step.aggregate.mockResolvedValue({
+        _sum: { stepCount: 1000 },
+      });
+      mockPrisma.wallet.findUnique.mockResolvedValue({
+        lifetimePoints: 500,
+        balance: 500,
+        lastResetDate: new Date(),
+      });
       mockPrisma.userChallenge.count.mockResolvedValue(0);
       mockPrisma.friendship.count.mockResolvedValue(0);
       mockPrisma.achievement.findMany.mockResolvedValue([]);
@@ -714,15 +720,20 @@ describe("RewardsService", () => {
     it("should process step rewards for found steps", async () => {
       mockPrisma.step.findMany.mockResolvedValueOnce([
         { userId: "u1", stepCount: 5000 },
-        { userId: "u2", stepCount: 10000 }
+        { userId: "u2", stepCount: 10000 },
       ]);
       mockPrisma.user.findUnique.mockResolvedValue({ dailyStepGoal: 5000 });
       mockPrisma.transaction.findMany.mockResolvedValue([]);
       mockPrisma.transaction.create.mockResolvedValue({});
       mockPrisma.wallet.upsert.mockResolvedValue({});
-      mockPrisma.streak.findUnique.mockResolvedValue({ currentStreak: 1, longestStreak: 1 });
+      mockPrisma.streak.findUnique.mockResolvedValue({
+        currentStreak: 1,
+        longestStreak: 1,
+      });
       mockPrisma.streak.update.mockResolvedValue({});
-      mockPrisma.step.aggregate.mockResolvedValue({ _sum: { stepCount: 5000 } });
+      mockPrisma.step.aggregate.mockResolvedValue({
+        _sum: { stepCount: 5000 },
+      });
       mockPrisma.wallet.findUnique.mockResolvedValue({});
       mockPrisma.userChallenge.count.mockResolvedValue(0);
       mockPrisma.friendship.count.mockResolvedValue(0);
@@ -737,27 +748,27 @@ describe("RewardsService", () => {
 
     it("should process step rewards with userId filter", async () => {
       mockPrisma.step.findMany.mockResolvedValueOnce([
-        { userId: "u1", stepCount: 5000 }
+        { userId: "u1", stepCount: 5000 },
       ]);
-      
+
       const result = await service.forceRewardsSync("u1");
-      
+
       expect(result.processedCount).toBe(1);
       expect(mockPrisma.step.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ userId: "u1" })
-        })
+          where: expect.objectContaining({ userId: "u1" }),
+        }),
       );
     });
 
     it("should handle processing errors gracefully", async () => {
       mockPrisma.step.findMany.mockResolvedValueOnce([
-        { userId: "u1", stepCount: 5000 }
+        { userId: "u1", stepCount: 5000 },
       ]);
       mockPrisma.user.findUnique.mockRejectedValueOnce(new Error("Test Error"));
-      
+
       const result = await service.forceRewardsSync("u1");
-      
+
       expect(result.processedCount).toBe(1);
       expect(result.details.length).toBe(0); // Should not be in details since it failed
     });

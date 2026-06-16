@@ -5,7 +5,6 @@ import {
   HttpStatus,
 } from "@nestjs/common";
 import { BaseExceptionFilter } from "@nestjs/core";
-import * as Sentry from "@sentry/nestjs";
 import { I18nService } from "nestjs-i18n";
 import { Request, Response } from "express";
 import { SentryExceptionCaptured } from "@sentry/nestjs";

@@ -1,4 +1,10 @@
-import { Injectable, OnModuleInit, Logger, NotFoundException, BadRequestException } from "@nestjs/common";
+import {
+  Injectable,
+  OnModuleInit,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
 
@@ -112,7 +118,7 @@ export class QuestsService implements OnModuleInit {
     if (!quest) throw new NotFoundException("Quest not found");
 
     const firstStage = quest.stages[0];
-    const deadline = firstStage?.durationDays 
+    const deadline = firstStage?.durationDays
       ? new Date(Date.now() + firstStage.durationDays * 24 * 60 * 60 * 1000)
       : null;
 
@@ -228,8 +234,10 @@ export class QuestsService implements OnModuleInit {
         } else {
           // Advance to the next stage!
           const nextStageObj = stages[nextStageIndex];
-          const newDeadline = nextStageObj.durationDays 
-            ? new Date(Date.now() + nextStageObj.durationDays * 24 * 60 * 60 * 1000)
+          const newDeadline = nextStageObj.durationDays
+            ? new Date(
+                Date.now() + nextStageObj.durationDays * 24 * 60 * 60 * 1000,
+              )
             : null;
 
           const updateResult = await this.prisma.userQuest.updateMany({
@@ -275,18 +283,18 @@ export class QuestsService implements OnModuleInit {
   /**
    * Revive an expired quest stage
    */
-  async revive(userId: string, questId: string, method: 'COINS' | 'AD') {
+  async revive(userId: string, questId: string, method: "COINS" | "AD") {
     const userQuest = await this.prisma.userQuest.findUnique({
       where: { userId_questId: { userId, questId } },
-      include: { 
-        quest: { 
-          include: { stages: { orderBy: { order: "asc" } } } 
-        } 
+      include: {
+        quest: {
+          include: { stages: { orderBy: { order: "asc" } } },
+        },
       },
     });
 
     if (!userQuest) throw new NotFoundException("Quest not found");
-    
+
     if (userQuest.status !== "NEEDS_REVIVAL") {
       throw new BadRequestException("Quest does not need revival");
     }
@@ -299,22 +307,24 @@ export class QuestsService implements OnModuleInit {
     // Actually, quests check stepCount directly from the frontend or daily step table. So we can't easily calculate < 5% progress without the step tracking logic.
     // For simplicity, we just allow revival for quests for now.
 
-    if (method === 'COINS') {
+    if (method === "COINS") {
       const wallet = await this.prisma.wallet.findUnique({ where: { userId } });
       if (!wallet || wallet.balance < 50) {
-        throw new BadRequestException("Insufficient coins for revival (need 50)");
+        throw new BadRequestException(
+          "Insufficient coins for revival (need 50)",
+        );
       }
       await this.prisma.wallet.update({
         where: { userId },
-        data: { balance: { decrement: 50 } }
+        data: { balance: { decrement: 50 } },
       });
       await this.prisma.transaction.create({
         data: {
           userId,
           type: "REVIVAL",
           points: -50,
-          description: `Revived quest: ${userQuest.quest.title}`
-        }
+          description: `Revived quest: ${userQuest.quest.title}`,
+        },
       });
     }
 
@@ -334,7 +344,7 @@ export class QuestsService implements OnModuleInit {
       data: {
         status: "IN_PROGRESS",
         deadline: newDeadline,
-        revivalCount: { increment: 1 }
+        revivalCount: { increment: 1 },
       },
       include: { quest: true },
     });
@@ -346,18 +356,18 @@ export class QuestsService implements OnModuleInit {
   async restart(userId: string, questId: string) {
     const userQuest = await this.prisma.userQuest.findUnique({
       where: { userId_questId: { userId, questId } },
-      include: { 
-        quest: { 
-          include: { stages: { orderBy: { order: "asc" } } } 
-        } 
+      include: {
+        quest: {
+          include: { stages: { orderBy: { order: "asc" } } },
+        },
       },
     });
 
     if (!userQuest) throw new NotFoundException("Quest not found");
 
     const currentStage = userQuest.quest.stages[userQuest.currentStageIndex];
-    
-    const deadline = currentStage?.durationDays 
+
+    const deadline = currentStage?.durationDays
       ? new Date(Date.now() + currentStage.durationDays * 24 * 60 * 60 * 1000)
       : null;
 
@@ -366,8 +376,8 @@ export class QuestsService implements OnModuleInit {
       data: {
         status: "IN_PROGRESS",
         deadline,
-        revivalCount: 0
-      }
+        revivalCount: 0,
+      },
     });
   }
 }

@@ -45,27 +45,39 @@ export class NotificationsController {
     @Request() req: any,
     @Body() dto: RegisterFcmTokenDto,
   ) {
-    return this.notificationsService.registerFcmToken(req.user.id || req.user.sub, dto.token);
+    return this.notificationsService.registerFcmToken(
+      req.user.id || req.user.sub,
+      dto.token,
+    );
   }
 
   @Post("all/read")
   @ApiOperation({ summary: "Mark all notifications as read" })
   @ApiResponse({ status: 201, description: "All notifications marked as read" })
   async markAllAsRead(@Request() req: any) {
-    return this.notificationsService.markAsRead(req.user.id || req.user.sub, "all");
+    return this.notificationsService.markAsRead(
+      req.user.id || req.user.sub,
+      "all",
+    );
   }
 
   @Post(":id/read")
   @ApiOperation({ summary: "Mark a notification as read" })
   @ApiResponse({ status: 201, description: "Notification marked as read" })
   async markAsRead(@Request() req: any, @Param("id") id: string) {
-    return this.notificationsService.markAsRead(req.user.id || req.user.sub, id);
+    return this.notificationsService.markAsRead(
+      req.user.id || req.user.sub,
+      id,
+    );
   }
 
   @Delete(":id")
   @ApiOperation({ summary: "Delete a notification" })
   @ApiResponse({ status: 200, description: "Notification deleted" })
   async deleteNotification(@Request() req: any, @Param("id") id: string) {
-    return this.notificationsService.deleteNotification(req.user.id || req.user.sub, id);
+    return this.notificationsService.deleteNotification(
+      req.user.id || req.user.sub,
+      id,
+    );
   }
 }

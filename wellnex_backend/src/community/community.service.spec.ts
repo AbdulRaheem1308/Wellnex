@@ -211,12 +211,14 @@ describe("CommunityService", () => {
       mockPrismaService.$transaction.mockImplementationOnce(async (cb) => {
         const tx = {
           feedComment: {
-            create: jest.fn().mockResolvedValue({ 
-              id: "comment1", 
-              user: { name: "Test User" } 
+            create: jest.fn().mockResolvedValue({
+              id: "comment1",
+              user: { name: "Test User" },
             }),
           },
-          feedPost: { update: jest.fn().mockResolvedValue({ userId: "otherUser" }) },
+          feedPost: {
+            update: jest.fn().mockResolvedValue({ userId: "otherUser" }),
+          },
           notification: {
             create: jest.fn().mockResolvedValue({}),
           },
@@ -225,9 +227,9 @@ describe("CommunityService", () => {
       });
 
       const result = await service.addComment("user1", "post1", "Great job!");
-      expect(result).toEqual({ 
-        id: "comment1", 
-        user: { name: "Test User" } 
+      expect(result).toEqual({
+        id: "comment1",
+        user: { name: "Test User" },
       });
     });
 
@@ -235,10 +237,14 @@ describe("CommunityService", () => {
       mockPrismaService.$transaction.mockImplementationOnce(async (cb) => {
         const tx = {
           feedComment: {
-            create: jest.fn().mockResolvedValue({ id: "comment2", user: { name: "User1" } }),
+            create: jest
+              .fn()
+              .mockResolvedValue({ id: "comment2", user: { name: "User1" } }),
           },
           // userId === commenterId, so no notification
-          feedPost: { update: jest.fn().mockResolvedValue({ userId: "user1" }) },
+          feedPost: {
+            update: jest.fn().mockResolvedValue({ userId: "user1" }),
+          },
         };
         return cb(tx);
       });

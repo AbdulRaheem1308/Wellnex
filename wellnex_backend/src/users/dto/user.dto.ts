@@ -15,7 +15,9 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 export class CreateUserDto {
   @ApiPropertyOptional({ example: "+919876543210" })
   @IsOptional()
-  @IsPhoneNumber("IN", { message: "Phone number must be a valid Indian mobile number (+91)" })
+  @IsPhoneNumber("IN", {
+    message: "Phone number must be a valid Indian mobile number (+91)",
+  })
   phone?: string;
 
   @ApiPropertyOptional({ example: "user@example.com" })
@@ -75,7 +77,9 @@ export class UpdateUserDto {
 
   @ApiPropertyOptional({ example: "+919876543210" })
   @IsOptional()
-  @IsPhoneNumber("IN", { message: "Phone number must be a valid Indian mobile number (+91)" })
+  @IsPhoneNumber("IN", {
+    message: "Phone number must be a valid Indian mobile number (+91)",
+  })
   phone?: string;
 
   @ApiPropertyOptional({ example: "user@example.com" })

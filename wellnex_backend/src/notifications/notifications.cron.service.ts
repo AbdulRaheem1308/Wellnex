@@ -97,41 +97,48 @@ export class NotificationsCronService {
       // 1. Expire ONGOING challenges -> NEEDS_REVIVAL
       const expiredChallenges = await this.prisma.userChallenge.findMany({
         where: { status: "ONGOING", deadline: { lte: now } },
-        include: { challenge: true }
+        include: { challenge: true },
       });
 
       for (const uc of expiredChallenges) {
         let graceHours = uc.challenge.gracePeriodHours;
         if (!graceHours && uc.challenge.durationDays) {
-          graceHours = Math.max(24, Math.floor(uc.challenge.durationDays * 24 * 0.15));
+          graceHours = Math.max(
+            24,
+            Math.floor(uc.challenge.durationDays * 24 * 0.15),
+          );
         } else if (!graceHours) {
           graceHours = 24;
         }
-        
-        const graceDeadline = new Date(Date.now() + graceHours * 60 * 60 * 1000);
-        
+
+        const graceDeadline = new Date(
+          Date.now() + graceHours * 60 * 60 * 1000,
+        );
+
         await this.prisma.userChallenge.update({
           where: { id: uc.id },
-          data: { status: "NEEDS_REVIVAL", deadline: graceDeadline }
+          data: { status: "NEEDS_REVIVAL", deadline: graceDeadline },
         });
-        
-        this.notificationsService.sendPushToUser(
-          uc.userId,
-          "Time's Up! ⏰",
-          `Your time for ${uc.challenge.title} has run out. You have ${graceHours}h to revive your progress!`
-        ).catch(() => {});
+
+        this.notificationsService
+          .sendPushToUser(
+            uc.userId,
+            "Time's Up! ⏰",
+            `Your time for ${uc.challenge.title} has run out. You have ${graceHours}h to revive your progress!`,
+          )
+          .catch(() => {});
       }
 
       // 2. Expire NEEDS_REVIVAL challenges -> FAILED
       await this.prisma.userChallenge.updateMany({
         where: { status: "NEEDS_REVIVAL", deadline: { lte: now } },
-        data: { status: "FAILED" }
+        data: { status: "FAILED" },
       });
 
       // 3. Expire IN_PROGRESS quests -> NEEDS_REVIVAL
       const expiredQuests = await this.prisma.userQuest.findMany({
         where: { status: "IN_PROGRESS", deadline: { lte: now } },
-        include: { quest: { include: { stages: true } } }
+        include: { quest: { include: { stages: true } } },
       });
 
       for (const uq of expiredQuests) {
@@ -142,25 +149,29 @@ export class NotificationsCronService {
         } else if (!graceHours) {
           graceHours = 24;
         }
-        
-        const graceDeadline = new Date(Date.now() + graceHours * 60 * 60 * 1000);
-        
+
+        const graceDeadline = new Date(
+          Date.now() + graceHours * 60 * 60 * 1000,
+        );
+
         await this.prisma.userQuest.update({
           where: { id: uq.id },
-          data: { status: "NEEDS_REVIVAL", deadline: graceDeadline }
+          data: { status: "NEEDS_REVIVAL", deadline: graceDeadline },
         });
-        
-        this.notificationsService.sendPushToUser(
-          uq.userId,
-          "Quest Stage Expired ⏰",
-          `Your time for stage ${uq.currentStageIndex + 1} has run out. Revive it to continue!`
-        ).catch(() => {});
+
+        this.notificationsService
+          .sendPushToUser(
+            uq.userId,
+            "Quest Stage Expired ⏰",
+            `Your time for stage ${uq.currentStageIndex + 1} has run out. Revive it to continue!`,
+          )
+          .catch(() => {});
       }
 
       // 4. Expire NEEDS_REVIVAL quests -> FAILED
       await this.prisma.userQuest.updateMany({
         where: { status: "NEEDS_REVIVAL", deadline: { lte: now } },
-        data: { status: "FAILED" }
+        data: { status: "FAILED" },
       });
 
       this.logger.log("Timeline enforcement completed.");
@@ -182,19 +193,23 @@ export class NotificationsCronService {
     try {
       const expiringChallenges = await this.prisma.userChallenge.findMany({
         where: { status: "ONGOING", deadline: { gt: now, lte: in24Hours } },
-        include: { challenge: true }
+        include: { challenge: true },
       });
 
       for (const uc of expiringChallenges) {
         // We will store reminder state in AppConfig to keep it simple and DB-backed
         const configKey = `reminder_sent_challenge_${uc.id}`;
-        const alreadySent = await this.prisma.appConfig.findUnique({ where: { key: configKey } });
+        const alreadySent = await this.prisma.appConfig.findUnique({
+          where: { key: configKey },
+        });
         if (alreadySent) continue;
 
         // Dynamic Heuristic: Find user's peak step hour
         let targetHour = 18; // Default 6 PM
         try {
-          const peakResult = await this.prisma.$queryRaw<{peak_hour: number}[]>`
+          const peakResult = await this.prisma.$queryRaw<
+            { peak_hour: number }[]
+          >`
             SELECT EXTRACT(HOUR FROM "updatedAt") AS peak_hour 
             FROM "steps" 
             WHERE "userId" = ${uc.userId}
@@ -202,7 +217,11 @@ export class NotificationsCronService {
             ORDER BY SUM("stepCount") DESC 
             LIMIT 1
           `;
-          if (Array.isArray(peakResult) && peakResult.length > 0 && peakResult[0].peak_hour) {
+          if (
+            Array.isArray(peakResult) &&
+            peakResult.length > 0 &&
+            peakResult[0].peak_hour
+          ) {
             targetHour = Number(peakResult[0].peak_hour);
             if (targetHour < 9 || targetHour > 20) targetHour = 18;
           }
@@ -211,18 +230,21 @@ export class NotificationsCronService {
         }
 
         const currentHour = new Date().getHours();
-        
+
         // If current hour matches their peak hour OR there's less than 3 hours left, send it!
-        const hoursLeft = (uc.deadline!.getTime() - Date.now()) / (1000 * 60 * 60);
+        const hoursLeft =
+          (uc.deadline!.getTime() - Date.now()) / (1000 * 60 * 60);
         if (currentHour === targetHour || hoursLeft <= 3) {
-          await this.notificationsService.sendPushToUser(
-            uc.userId,
-            "Expiring Soon! ⏳",
-            `Don't lose your progress! ${uc.challenge.title} expires in less than 24 hours.`
-          ).catch(() => {});
+          await this.notificationsService
+            .sendPushToUser(
+              uc.userId,
+              "Expiring Soon! ⏳",
+              `Don't lose your progress! ${uc.challenge.title} expires in less than 24 hours.`,
+            )
+            .catch(() => {});
 
           await this.prisma.appConfig.create({
-            data: { key: configKey, value: "sent" }
+            data: { key: configKey, value: "sent" },
           });
         }
       }

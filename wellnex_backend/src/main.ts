@@ -113,7 +113,10 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   await app.listen(port, "0.0.0.0");
 
-  const baseUrl = process.env.RENDER_EXTERNAL_URL || process.env.APP_URL || `http://localhost:${port}`;
+  const baseUrl =
+    process.env.RENDER_EXTERNAL_URL ||
+    process.env.APP_URL ||
+    `http://localhost:${port}`;
 
   Logger.log(`🚀 Wellnex API running on: ${baseUrl}`);
   Logger.log(`📚 API Base URL: ${baseUrl}/api/v1`);

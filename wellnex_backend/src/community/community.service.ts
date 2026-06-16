@@ -104,7 +104,7 @@ export class CommunityService {
               updatedPost.userId,
               "New Like! ❤️",
               `${liker?.name || "Someone"} liked your post.`,
-              "POST_LIKE"
+              "POST_LIKE",
             )
             .catch((e) => {
               // eslint-disable-next-line no-console
@@ -139,7 +139,7 @@ export class CommunityService {
             updatedPost.userId,
             "New Comment! 💬",
             `${comment.user.name || "Someone"} commented on your post.`,
-            "POST_COMMENT"
+            "POST_COMMENT",
           )
           .catch((e) => {
             // eslint-disable-next-line no-console

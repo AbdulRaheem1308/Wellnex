@@ -88,8 +88,10 @@ describe("MessagingService", () => {
         userId: "u1",
       });
       mockPrisma.message.create.mockResolvedValueOnce({ id: "m1" });
-      mockPrisma.conversation.update.mockResolvedValueOnce({ participants: [] });
-      mockPrisma.user.findUnique.mockResolvedValueOnce({ name: 'Test User' });
+      mockPrisma.conversation.update.mockResolvedValueOnce({
+        participants: [],
+      });
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ name: "Test User" });
 
       const res = await service.sendMessage("c1", "u1", "hello");
       expect(res.id).toBe("m1");
@@ -97,8 +99,12 @@ describe("MessagingService", () => {
     });
 
     it("should truncate long message content in push notification", async () => {
-      const sendPushSpy = jest.spyOn(mockNotificationsService, 'sendPushToUser').mockResolvedValue(undefined);
-      mockPrisma.conversationParticipant.findUnique.mockResolvedValueOnce({ userId: "u1" });
+      const sendPushSpy = jest
+        .spyOn(mockNotificationsService, "sendPushToUser")
+        .mockResolvedValue(undefined);
+      mockPrisma.conversationParticipant.findUnique.mockResolvedValueOnce({
+        userId: "u1",
+      });
       mockPrisma.message.create.mockResolvedValueOnce({ id: "m2" });
       mockPrisma.conversation.update.mockResolvedValueOnce({
         participants: [{ userId: "u2" }],
@@ -116,7 +122,9 @@ describe("MessagingService", () => {
     });
 
     it("should use 'Someone' when sender name is null", async () => {
-      mockPrisma.conversationParticipant.findUnique.mockResolvedValueOnce({ userId: "u1" });
+      mockPrisma.conversationParticipant.findUnique.mockResolvedValueOnce({
+        userId: "u1",
+      });
       mockPrisma.message.create.mockResolvedValueOnce({ id: "m3" });
       mockPrisma.conversation.update.mockResolvedValueOnce({
         participants: [{ userId: "u2" }],

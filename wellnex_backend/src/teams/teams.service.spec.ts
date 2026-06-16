@@ -41,7 +41,10 @@ describe("TeamsService", () => {
       providers: [
         TeamsService,
         { provide: PrismaService, useValue: mockPrismaService },
-        { provide: NotificationsService, useValue: { createAndNotify: jest.fn().mockResolvedValue(true) } },
+        {
+          provide: NotificationsService,
+          useValue: { createAndNotify: jest.fn().mockResolvedValue(true) },
+        },
       ],
     }).compile();
     service = module.get<TeamsService>(TeamsService);
@@ -167,7 +170,9 @@ describe("TeamsService", () => {
         members: [],
       });
       mockPrismaService.teamMember.create.mockResolvedValue({});
-      mockPrismaService.user.findUnique.mockResolvedValue({ name: "New Member" });
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        name: "New Member",
+      });
       // Access injected notification service via module
       const res = await service.joinTeam("t1", "u1");
       expect(res.success).toBe(true);

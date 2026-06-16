@@ -163,7 +163,9 @@ describe("ChallengesService", () => {
       mockPrismaService.userChallenge.findUnique.mockResolvedValue(null);
       // If the service checks maxParticipants and _count, this should throw
       // For coverage — just ensure join path runs without crashing if service doesn't check
-      await expect(service.join("u1", "c1")).resolves.toBeDefined().catch(() => {});
+      await expect(service.join("u1", "c1"))
+        .resolves.toBeDefined()
+        .catch(() => {});
     });
 
     it("should join successfully", async () => {
@@ -208,7 +210,9 @@ describe("ChallengesService", () => {
         challenge: { stepTarget: 1000, rewardCoins: 10 },
       });
       // Force transaction to throw
-      mockPrismaService.$transaction = jest.fn().mockRejectedValue(new Error("DB Error"));
+      mockPrismaService.$transaction = jest
+        .fn()
+        .mockRejectedValue(new Error("DB Error"));
       await expect(service.updateProgress("u1", "c1", 50)).rejects.toThrow(
         BadRequestException,
       );
@@ -272,15 +276,19 @@ describe("ChallengesService", () => {
   describe("revive", () => {
     it("should throw NotFound if challenge not found", async () => {
       mockPrismaService.userChallenge.findUnique.mockResolvedValue(null);
-      await expect(service.revive("u1", "c1", "COINS")).rejects.toThrow(NotFoundException);
+      await expect(service.revive("u1", "c1", "COINS")).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it("should throw BadRequest if status is not NEEDS_REVIVAL", async () => {
       mockPrismaService.userChallenge.findUnique.mockResolvedValue({
         status: "ONGOING",
-        challenge: { title: "Test" }
+        challenge: { title: "Test" },
       });
-      await expect(service.revive("u1", "c1", "COINS")).rejects.toThrow(BadRequestException);
+      await expect(service.revive("u1", "c1", "COINS")).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it("should revive an expired challenge with COINS", async () => {
@@ -288,12 +296,18 @@ describe("ChallengesService", () => {
         id: "uc1",
         status: "NEEDS_REVIVAL",
         progress: 50,
-        challenge: { title: "Test", durationDays: 1, revivalExtensionHours: 24 }
+        challenge: {
+          title: "Test",
+          durationDays: 1,
+          revivalExtensionHours: 24,
+        },
       });
       mockPrismaService.wallet.findUnique.mockResolvedValue({ balance: 100 });
       mockPrismaService.wallet.update.mockResolvedValue({});
       mockPrismaService.transaction.create.mockResolvedValue({});
-      mockPrismaService.userChallenge.update.mockResolvedValue({ status: "ONGOING" });
+      mockPrismaService.userChallenge.update.mockResolvedValue({
+        status: "ONGOING",
+      });
 
       const res = await service.revive("u1", "c1", "COINS");
       expect(res.status).toBe("ONGOING");
@@ -305,10 +319,12 @@ describe("ChallengesService", () => {
         id: "uc1",
         status: "NEEDS_REVIVAL",
         progress: 50,
-        challenge: { title: "Test", durationDays: 1 }
+        challenge: { title: "Test", durationDays: 1 },
       });
       mockPrismaService.wallet.findUnique.mockResolvedValue({ balance: 10 });
-      await expect(service.revive("u1", "c1", "COINS")).rejects.toThrow(BadRequestException);
+      await expect(service.revive("u1", "c1", "COINS")).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it("should revive an expired challenge with AD", async () => {
@@ -316,9 +332,11 @@ describe("ChallengesService", () => {
         id: "uc1",
         status: "NEEDS_REVIVAL",
         progress: 50,
-        challenge: { title: "Test" } // no durationDays, no revivalExtensionHours
+        challenge: { title: "Test" }, // no durationDays, no revivalExtensionHours
       });
-      mockPrismaService.userChallenge.update.mockResolvedValue({ status: "ONGOING" });
+      mockPrismaService.userChallenge.update.mockResolvedValue({
+        status: "ONGOING",
+      });
 
       const res = await service.revive("u1", "c1", "AD");
       expect(res.status).toBe("ONGOING");
@@ -329,16 +347,20 @@ describe("ChallengesService", () => {
         id: "uc1",
         status: "NEEDS_REVIVAL",
         progress: 4,
-        challenge: { title: "Test" }
+        challenge: { title: "Test" },
       });
-      await expect(service.revive("u1", "c1", "COINS")).rejects.toThrow(BadRequestException);
+      await expect(service.revive("u1", "c1", "COINS")).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
   describe("restart", () => {
     it("should throw NotFound if challenge not found", async () => {
       mockPrismaService.userChallenge.findUnique.mockResolvedValue(null);
-      await expect(service.restart("u1", "c1")).rejects.toThrow(NotFoundException);
+      await expect(service.restart("u1", "c1")).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it("should restart a challenge if progress < 5", async () => {
@@ -346,9 +368,12 @@ describe("ChallengesService", () => {
         id: "uc1",
         status: "NEEDS_REVIVAL",
         progress: 0,
-        challenge: { title: "Test", durationDays: 1 }
+        challenge: { title: "Test", durationDays: 1 },
       });
-      mockPrismaService.userChallenge.update.mockResolvedValue({ status: "ONGOING", progress: 0 });
+      mockPrismaService.userChallenge.update.mockResolvedValue({
+        status: "ONGOING",
+        progress: 0,
+      });
 
       const res = await service.restart("u1", "c1");
       expect(res.status).toBe("ONGOING");
@@ -359,9 +384,11 @@ describe("ChallengesService", () => {
         id: "uc1",
         status: "NEEDS_REVIVAL",
         progress: 5,
-        challenge: { title: "Test", durationDays: 1 }
+        challenge: { title: "Test", durationDays: 1 },
       });
-      await expect(service.restart("u1", "c1")).rejects.toThrow(BadRequestException);
+      await expect(service.restart("u1", "c1")).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 });

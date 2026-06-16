@@ -88,18 +88,15 @@ export class QuestsController {
   async revive(
     @CurrentUser() user: any,
     @Param("id") questId: string,
-    @Body("method") method: 'COINS' | 'AD'
+    @Body("method") method: "COINS" | "AD",
   ) {
-    return this.questsService.revive(user.id, questId, method || 'COINS');
+    return this.questsService.revive(user.id, questId, method || "COINS");
   }
 
   @Post(":id/restart")
   @ApiOperation({ summary: "Restart a quest stage" })
   @ApiResponse({ status: 201, description: "Successfully restarted quest" })
-  async restart(
-    @CurrentUser() user: any,
-    @Param("id") questId: string
-  ) {
+  async restart(@CurrentUser() user: any, @Param("id") questId: string) {
     return this.questsService.restart(user.id, questId);
   }
 }

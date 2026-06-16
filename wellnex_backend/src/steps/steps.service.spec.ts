@@ -221,7 +221,10 @@ describe("StepsService", () => {
     it("should skip nonce check when no nonce provided", async () => {
       mockPrisma.device.findFirst.mockResolvedValueOnce({ id: "d1" });
       mockPrisma.step.findUnique.mockResolvedValueOnce(null);
-      mockPrisma.step.upsert.mockResolvedValueOnce({ stepCount: 5000, source: "google_fit" });
+      mockPrisma.step.upsert.mockResolvedValueOnce({
+        stepCount: 5000,
+        source: "google_fit",
+      });
 
       // No nonce in dto — should not call setNonce
       const dtoWithoutNonce = { ...baseDto };
@@ -233,21 +236,31 @@ describe("StepsService", () => {
     it("should skip timestamp check when no timestamp provided", async () => {
       mockPrisma.device.findFirst.mockResolvedValueOnce({ id: "d1" });
       mockPrisma.step.findUnique.mockResolvedValueOnce(null);
-      mockPrisma.step.upsert.mockResolvedValueOnce({ stepCount: 5000, source: "google_fit" });
+      mockPrisma.step.upsert.mockResolvedValueOnce({
+        stepCount: 5000,
+        source: "google_fit",
+      });
 
       const dtoWithoutTimestamp = { ...baseDto };
       delete (dtoWithoutTimestamp as any).timestamp;
-      await expect(service.syncSteps(userId, dtoWithoutTimestamp)).resolves.toBeDefined();
+      await expect(
+        service.syncSteps(userId, dtoWithoutTimestamp),
+      ).resolves.toBeDefined();
     });
 
     it("should skip integrity check when no integrity provided", async () => {
       mockPrisma.device.findFirst.mockResolvedValueOnce({ id: "d1" });
       mockPrisma.step.findUnique.mockResolvedValueOnce(null);
-      mockPrisma.step.upsert.mockResolvedValueOnce({ stepCount: 5000, source: "google_fit" });
+      mockPrisma.step.upsert.mockResolvedValueOnce({
+        stepCount: 5000,
+        source: "google_fit",
+      });
 
       const dtoWithoutIntegrity = { ...baseDto };
       delete (dtoWithoutIntegrity as any).integrity;
-      await expect(service.syncSteps(userId, dtoWithoutIntegrity)).resolves.toBeDefined();
+      await expect(
+        service.syncSteps(userId, dtoWithoutIntegrity),
+      ).resolves.toBeDefined();
     });
   });
 

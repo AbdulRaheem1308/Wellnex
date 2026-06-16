@@ -113,18 +113,19 @@ export class ChallengesController {
   async revive(
     @CurrentUser() user: any,
     @Param("id") challengeId: string,
-    @Body("method") method: 'COINS' | 'AD'
+    @Body("method") method: "COINS" | "AD",
   ) {
-    return this.challengesService.revive(user.id, challengeId, method || 'COINS');
+    return this.challengesService.revive(
+      user.id,
+      challengeId,
+      method || "COINS",
+    );
   }
 
   @Post(":id/restart")
   @ApiOperation({ summary: "Restart a challenge if progress is below 5%" })
   @ApiResponse({ status: 201, description: "Successfully restarted challenge" })
-  async restart(
-    @CurrentUser() user: any,
-    @Param("id") challengeId: string
-  ) {
+  async restart(@CurrentUser() user: any, @Param("id") challengeId: string) {
     return this.challengesService.restart(user.id, challengeId);
   }
 }

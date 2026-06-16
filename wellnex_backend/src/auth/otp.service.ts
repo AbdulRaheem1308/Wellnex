@@ -89,7 +89,9 @@ export class OtpService {
   async sendEmailOtp(email: string, otp: string): Promise<void> {
     if (this.mailerTransporter) {
       try {
-        const fromEmail = this.configService.get("SMTP_FROM") || this.configService.get("SMTP_USER");
+        const fromEmail =
+          this.configService.get("SMTP_FROM") ||
+          this.configService.get("SMTP_USER");
         await this.mailerTransporter.sendMail({
           from: `"Wellnex" <${fromEmail}>`,
           to: email,
