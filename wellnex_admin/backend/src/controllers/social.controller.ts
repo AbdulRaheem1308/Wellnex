@@ -51,8 +51,7 @@ export const createFeedPost = async (req: Request, res: Response, next: NextFunc
     const post = await prisma.feedPost.create({
       data: {
         userId: user.id,
-        content,
-        postType: "MANUAL"
+        content
       }
     });
     res.status(201).json({ success: true, data: post });

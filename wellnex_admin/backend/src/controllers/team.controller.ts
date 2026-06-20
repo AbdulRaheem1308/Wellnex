@@ -43,9 +43,12 @@ export const getTeamBattles = async (req: Request, res: Response, next: NextFunc
 
 export const createTeam = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, isPrivate } = req.body;
+    const { name } = req.body;
+    const user = await prisma.user.findFirst();
+    if (!user) return res.status(400).json({ success: false, message: "No users exist to be captain." });
+
     const team = await prisma.team.create({
-      data: { name, totalSteps: 0 }
+      data: { name, totalSteps: 0, captainId: user.id }
     });
     res.status(201).json({ success: true, data: team });
   } catch (error) {
