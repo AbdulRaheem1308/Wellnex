@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { MessageSquare, Trash2, Plus } from "lucide-react";
+import { Trash2, Plus } from "lucide-react";
 
 export const SocialView: React.FC<any> = ({ feedPosts, invitations, onDeletePost, onCreatePost }) => {
   const [showModal, setShowModal] = useState(false);

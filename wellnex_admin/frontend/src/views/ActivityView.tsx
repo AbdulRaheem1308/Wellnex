@@ -1,5 +1,5 @@
 import React from "react";
-import { AlertTriangle, Trash2, Activity } from "lucide-react";
+import { AlertTriangle, Trash2 } from "lucide-react";
 
 export const ActivityView: React.FC<any> = ({ activities, steps, onDeleteActivity }) => {
   return (

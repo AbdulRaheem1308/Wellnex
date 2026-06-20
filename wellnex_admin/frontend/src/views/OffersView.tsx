@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Tag, Plus, Target } from "lucide-react";
+import { Plus } from "lucide-react";
 
 export const OffersView: React.FC<any> = ({ offers, adViews, onToggleOffer, onCreateOffer }) => {
   const [showModal, setShowModal] = useState(false);

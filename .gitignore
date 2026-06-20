@@ -45,3 +45,6 @@ dist/
 
 # ── Backend build artefacts ──────────────────────────────────────────────────
 wellnex_backend/dist/
+pgsql/
+*.zip
+*.dump

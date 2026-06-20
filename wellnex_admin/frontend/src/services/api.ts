@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:4000/api/admin";
+const API_BASE = "https://admin-api.joinwellnex.com/api/admin";
 
 export const getApiKey = (): string => {
   return localStorage.getItem("wellnex_admin_key") || "";

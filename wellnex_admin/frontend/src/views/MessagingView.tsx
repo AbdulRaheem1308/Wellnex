@@ -1,5 +1,5 @@
 import React from "react";
-import { MessageSquareOff, Trash2, User } from "lucide-react";
+import { MessageSquareOff, User } from "lucide-react";
 
 export const MessagingView: React.FC<any> = ({ conversations, onDeleteConversation }) => {
   return (

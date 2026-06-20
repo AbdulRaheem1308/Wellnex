@@ -1,0 +1,17 @@
+{
+  "projects": {
+    "default": "wellnex-8bc04"
+  },
+  "targets": {
+    "wellnex-8bc04": {
+      "hosting": {
+        "website": [
+          "wellnex-8bc04"
+        ],
+        "admin": [
+          "wellnex-admin-portal"
+        ]
+      }
+    }
+  }
+}

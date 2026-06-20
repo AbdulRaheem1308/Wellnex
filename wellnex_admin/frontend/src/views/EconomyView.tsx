@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { DollarSign, Settings, Save } from "lucide-react";
+import { Settings, Save } from "lucide-react";
 
 export const EconomyView: React.FC<any> = ({ transactions, appConfigs, onSaveConfig }) => {
   const [editingConfig, setEditingConfig] = useState<string | null>(null);
