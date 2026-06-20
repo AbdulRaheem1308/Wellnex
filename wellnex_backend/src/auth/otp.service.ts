@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import Twilio from "twilio";
 import * as crypto from "node:crypto";
 import { Resend } from "resend";
+import { ServiceUnavailableException } from "@nestjs/common";
 
 @Injectable()
 export class OtpService {
@@ -10,24 +11,26 @@ export class OtpService {
   private readonly twilioClient: Twilio.Twilio | null = null;
   private readonly resendClient: Resend | null = null;
   private readonly brevoApiKey: string | null = null;
+  private readonly isProduction: boolean;
 
   constructor(private readonly configService: ConfigService) {
     const accountSid = this.configService.get("TWILIO_ACCOUNT_SID");
     const authToken = this.configService.get("TWILIO_AUTH_TOKEN");
-    const isProduction = this.configService.get("NODE_ENV") === "production";
+    this.isProduction = this.configService.get("NODE_ENV") === "production";
 
     if (accountSid && authToken && !accountSid.startsWith("AC_YOUR")) {
       this.twilioClient = Twilio(accountSid, authToken);
       this.logger.log("Twilio client initialized");
     } else {
-      if (isProduction) {
+      if (this.isProduction) {
         this.logger.error(
           "CRITICAL: Twilio credentials missing or invalid in PRODUCTION mode! SMS OTPs will fail.",
         );
+      } else {
+        this.logger.warn(
+          "Twilio not configured - OTPs will be logged to console",
+        );
       }
-      this.logger.warn(
-        "Twilio not configured - OTPs will be logged to console",
-      );
     }
 
     const resendApiKey = this.configService.get("RESEND_API_KEY");
@@ -36,14 +39,15 @@ export class OtpService {
       this.resendClient = new Resend(resendApiKey);
       this.logger.log("Resend client initialized");
     } else {
-      if (isProduction) {
+      if (this.isProduction) {
         this.logger.error(
           "CRITICAL: RESEND_API_KEY missing in PRODUCTION mode! Email OTPs will fail.",
         );
+      } else {
+        this.logger.warn(
+          "Resend not configured - Email OTPs will be logged to console",
+        );
       }
-      this.logger.warn(
-        "Resend not configured - Email OTPs will be logged to console",
-      );
     }
 
     const brevoApiKey = this.configService.get("BREVO_API_KEY");
@@ -73,12 +77,12 @@ export class OtpService {
           to: phone,
         });
         this.logger.log(`OTP sent to ${phone}`);
-      } catch (error) {
+      } catch (error: any) {
         this.logger.error(`Failed to send SMS to ${phone}:`, error.message);
-        this.logOtpForDevelopment(phone, otp);
+        this.handleOtpFailure(phone, otp);
       }
     } else {
-      this.logOtpForDevelopment(phone, otp);
+      this.handleOtpFailure(phone, otp);
     }
   }
 
@@ -157,17 +161,27 @@ export class OtpService {
               `Both Resend and Brevo failed to send email to ${email}:`,
               brevoError.message,
             );
-            this.logOtpForDevelopment(email, otp);
+            this.handleOtpFailure(email, otp);
           }
         } else {
           this.logger.error(
             `No Brevo client configured for fallback. Failed to send email to ${email}`,
           );
-          this.logOtpForDevelopment(email, otp);
+          this.handleOtpFailure(email, otp);
         }
       }
     } else {
-      this.logOtpForDevelopment(email, otp);
+      this.handleOtpFailure(email, otp);
+    }
+  }
+
+  private handleOtpFailure(identifier: string, otp: string): void {
+    if (this.isProduction) {
+      throw new ServiceUnavailableException(
+        "Failed to send OTP. SMS/Email service is not configured or currently unavailable.",
+      );
+    } else {
+      this.logOtpForDevelopment(identifier, otp);
     }
   }
 
