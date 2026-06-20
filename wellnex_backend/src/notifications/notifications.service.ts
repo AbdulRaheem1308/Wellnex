@@ -2,7 +2,6 @@ import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import * as admin from "firebase-admin";
 import { Resend } from "resend";
-import * as brevo from "@getbrevo/brevo";
 
 export interface NotificationItem {
   id: string;
@@ -18,7 +17,7 @@ export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
   private readonly fcmEnabled: boolean;
   private readonly resendClient: Resend | null = null;
-  private readonly brevoClient: brevo.TransactionalEmailsApi | null = null;
+  private readonly brevoApiKey: string | null = null;
 
   constructor(private readonly prisma: PrismaService) {
     // Firebase Admin is initialized once in the app lifecycle.
@@ -56,12 +55,8 @@ export class NotificationsService {
 
     const brevoApiKey = process.env.BREVO_API_KEY;
     if (brevoApiKey) {
-      this.brevoClient = new brevo.TransactionalEmailsApi();
-      this.brevoClient.setApiKey(
-        brevo.TransactionalEmailsApiApiKeys.apiKey,
-        brevoApiKey,
-      );
-      this.logger.log("Brevo client initialized for notifications fallback");
+      this.brevoApiKey = brevoApiKey;
+      this.logger.log("Brevo API key initialized for notifications fallback");
     }
   }
 
@@ -275,27 +270,30 @@ export class NotificationsService {
         `Resend failed for ${to}, attempting fallback to Brevo: ${error.message}`,
       );
 
-      if (this.brevoClient) {
+      if (this.brevoApiKey) {
         try {
-          const sendSmtpEmail = new brevo.SendSmtpEmail();
-          sendSmtpEmail.subject = subject;
-          sendSmtpEmail.htmlContent = html;
-          sendSmtpEmail.sender = {
-            name: "Wellnex",
-            email: "no-reply@joinwellnex.com",
-          };
-          sendSmtpEmail.to = [{ email: to }];
+          const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+            method: "POST",
+            headers: {
+              "api-key": this.brevoApiKey,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              sender: { name: "Wellnex", email: "no-reply@joinwellnex.com" },
+              to: [{ email: to }],
+              subject: subject,
+              htmlContent: html
+            }),
+          });
 
-          await this.brevoClient.sendTransacEmail(sendSmtpEmail);
-          this.logger.log(
-            `Email successfully sent via Brevo fallback to ${to}`,
-          );
+          if (!response.ok) {
+            throw new Error(`Brevo API error: ${response.statusText}`);
+          }
+
+          this.logger.log(`Email successfully sent via Brevo fallback to ${to}`);
           return true;
         } catch (brevoError: any) {
-          this.logger.error(
-            `Both Resend and Brevo failed to send email to ${to}:`,
-            brevoError.message,
-          );
+          this.logger.error(`Both Resend and Brevo failed to send email to ${to}:`, brevoError.message);
           return false;
         }
       } else {

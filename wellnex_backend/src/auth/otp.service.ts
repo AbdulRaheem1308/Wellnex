@@ -3,14 +3,13 @@ import { ConfigService } from "@nestjs/config";
 import Twilio from "twilio";
 import * as crypto from "node:crypto";
 import { Resend } from "resend";
-import * as brevo from "@getbrevo/brevo";
 
 @Injectable()
 export class OtpService {
   private readonly logger = new Logger(OtpService.name);
   private readonly twilioClient: Twilio.Twilio | null = null;
   private readonly resendClient: Resend | null = null;
-  private readonly brevoClient: brevo.TransactionalEmailsApi | null = null;
+  private readonly brevoApiKey: string | null = null;
 
   constructor(private readonly configService: ConfigService) {
     const accountSid = this.configService.get("TWILIO_ACCOUNT_SID");
@@ -49,12 +48,8 @@ export class OtpService {
 
     const brevoApiKey = this.configService.get("BREVO_API_KEY");
     if (brevoApiKey) {
-      this.brevoClient = new brevo.TransactionalEmailsApi();
-      this.brevoClient.setApiKey(
-        brevo.TransactionalEmailsApiApiKeys.apiKey,
-        brevoApiKey,
-      );
-      this.logger.log("Brevo client initialized for fallback");
+      this.brevoApiKey = brevoApiKey;
+      this.logger.log("Brevo API key initialized for fallback");
     }
   }
 
@@ -116,38 +111,41 @@ export class OtpService {
           `Resend failed for ${email}, attempting fallback to Brevo: ${error.message}`,
         );
 
-        if (this.brevoClient) {
+        if (this.brevoApiKey) {
           try {
-            const sendSmtpEmail = new brevo.SendSmtpEmail();
-            sendSmtpEmail.subject = "Your Wellnex OTP Verification Code";
-            sendSmtpEmail.htmlContent = `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
-                <h2 style="color: #4CAF50; text-align: center;">Welcome to Wellnex!</h2>
-                <p style="font-size: 16px; color: #333;">Hello,</p>
-                <p style="font-size: 16px; color: #333;">Your verification code is:</p>
-                <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
-                  <span style="font-size: 24px; font-weight: bold; letter-spacing: 5px; color: #333;">${otp}</span>
-                </div>
-                <p style="font-size: 14px; color: #666;">This code is valid for 5 minutes. Please do not share it with anyone.</p>
-                <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;" />
-                <p style="font-size: 12px; color: #999; text-align: center;">If you did not request this code, please ignore this email.</p>
-              </div>
-            `;
-            sendSmtpEmail.sender = {
-              name: "Wellnex",
-              email: "no-reply@joinwellnex.com",
-            };
-            sendSmtpEmail.to = [{ email: email }];
+            const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+              method: "POST",
+              headers: {
+                "api-key": this.brevoApiKey,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                sender: { name: "Wellnex", email: "no-reply@joinwellnex.com" },
+                to: [{ email: email }],
+                subject: "Your Wellnex OTP Verification Code",
+                htmlContent: `
+                  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
+                    <h2 style="color: #4CAF50; text-align: center;">Welcome to Wellnex!</h2>
+                    <p style="font-size: 16px; color: #333;">Hello,</p>
+                    <p style="font-size: 16px; color: #333;">Your verification code is:</p>
+                    <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
+                      <span style="font-size: 24px; font-weight: bold; letter-spacing: 5px; color: #333;">${otp}</span>
+                    </div>
+                    <p style="font-size: 14px; color: #666;">This code is valid for 5 minutes. Please do not share it with anyone.</p>
+                    <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;" />
+                    <p style="font-size: 12px; color: #999; text-align: center;">If you did not request this code, please ignore this email.</p>
+                  </div>
+                `
+              }),
+            });
 
-            await this.brevoClient.sendTransacEmail(sendSmtpEmail);
-            this.logger.log(
-              `OTP successfully sent via Brevo fallback to ${email}`,
-            );
+            if (!response.ok) {
+              throw new Error(`Brevo API error: ${response.statusText}`);
+            }
+
+            this.logger.log(`OTP successfully sent via Brevo fallback to ${email}`);
           } catch (brevoError: any) {
-            this.logger.error(
-              `Both Resend and Brevo failed to send email to ${email}:`,
-              brevoError.message,
-            );
+            this.logger.error(`Both Resend and Brevo failed to send email to ${email}:`, brevoError.message);
             this.logOtpForDevelopment(email, otp);
           }
         } else {

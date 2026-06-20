@@ -24,22 +24,13 @@ jest.mock("resend", () => ({
   })),
 }));
 
-jest.mock("@getbrevo/brevo", () => ({
-  TransactionalEmailsApi: jest.fn().mockImplementation(() => ({
-    setApiKey: jest.fn(),
-    sendTransacEmail: jest.fn(),
-  })),
-  TransactionalEmailsApiApiKeys: {
-    apiKey: 0,
-  },
-  SendSmtpEmail: jest.fn().mockImplementation(() => ({})),
-}));
 
 describe("OtpService", () => {
   let mockConfigService: any;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    global.fetch = jest.fn();
     mockConfigService = {
       get: jest.fn((key) => {
         if (key === "NODE_ENV") return "development";
@@ -220,19 +211,23 @@ describe("OtpService", () => {
           .mockImplementation();
 
         const resendClient = (validService as any).resendClient;
-        const brevoClient = (validService as any).brevoClient;
 
         resendClient.emails.send.mockRejectedValueOnce(
           new Error("resend down"),
         );
-        brevoClient.sendTransacEmail.mockResolvedValueOnce({
-          messageId: "456",
+        
+        (global.fetch as jest.Mock).mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ messageId: "456" }),
         });
 
         await validService.sendEmailOtp("test@test.com", "555555");
 
         expect(resendClient.emails.send).toHaveBeenCalled();
-        expect(brevoClient.sendTransacEmail).toHaveBeenCalled();
+        expect(global.fetch).toHaveBeenCalledWith(
+          "https://api.brevo.com/v3/smtp/email",
+          expect.any(Object)
+        );
         expect(validLoggerSpy).toHaveBeenCalledWith(
           "OTP successfully sent via Brevo fallback to test@test.com",
         );

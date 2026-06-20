@@ -4,7 +4,6 @@ import { PrismaService } from "../prisma/prisma.service";
 import * as admin from "firebase-admin";
 import { Logger } from "@nestjs/common";
 import { Resend } from "resend";
-import * as brevo from "@getbrevo/brevo";
 
 jest.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
 jest.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
@@ -33,30 +32,21 @@ jest.mock("resend", () => ({
   })),
 }));
 
-jest.mock("@getbrevo/brevo", () => ({
-  TransactionalEmailsApi: jest.fn().mockImplementation(() => ({
-    setApiKey: jest.fn(),
-    sendTransacEmail: jest.fn(),
-  })),
-  TransactionalEmailsApiApiKeys: {
-    apiKey: 0,
-  },
-  SendSmtpEmail: jest.fn().mockImplementation(() => ({})),
-}));
+
 
 describe("NotificationsService", () => {
   let service: NotificationsService;
   let prismaService: PrismaService;
   let mMessaging: any;
   let mResend: any;
-  let mBrevo: any;
 
   beforeEach(async () => {
     jest.clearAllMocks();
     (admin as any).apps = [];
     mMessaging = admin.messaging();
     mResend = new Resend();
-    mBrevo = new brevo.TransactionalEmailsApi();
+    
+    global.fetch = jest.fn();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -257,15 +247,23 @@ describe("NotificationsService", () => {
       expect(mResend.emails.send).toHaveBeenCalled();
     });
 
-    it("should handle email send error and fallback to brevo", async () => {
+    it("should handle email send error and fallback to brevo fetch", async () => {
       process.env.RESEND_API_KEY = "test_key";
       process.env.BREVO_API_KEY = "test_brevo";
       mResend.emails.send.mockRejectedValue(new Error("Send error"));
-      mBrevo.sendTransacEmail.mockResolvedValue({ messageId: "123" });
+      
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => ({ messageId: "123" }),
+      });
+
       const result = await service.sendEmail("test@test.com", "Subj", "<html>");
       expect(result).toBe(true);
       expect(mResend.emails.send).toHaveBeenCalled();
-      expect(mBrevo.sendTransacEmail).toHaveBeenCalled();
+      expect(global.fetch).toHaveBeenCalledWith(
+        "https://api.brevo.com/v3/smtp/email",
+        expect.any(Object)
+      );
     });
   });
 
