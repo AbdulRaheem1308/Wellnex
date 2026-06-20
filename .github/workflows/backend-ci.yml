@@ -105,3 +105,20 @@ jobs:
         SONAR_HOST_URL: "https://sonarcloud.io"
       with:
         projectBaseDir: wellnex_backend
+
+  deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Deploy to OCI Server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.OCI_HOST }}
+          username: ${{ secrets.OCI_USERNAME }}
+          key: ${{ secrets.OCI_SSH_KEY }}
+          script: |
+            cd ~/wellnex/source
+            git pull origin main
+            cd ~/wellnex
+            docker compose up -d --build
