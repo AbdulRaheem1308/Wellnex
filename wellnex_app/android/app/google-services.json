@@ -56,58 +56,6 @@
           ]
         }
       }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:269960707574:android:116921f039a2038e571bd7",
-        "android_client_info": {
-          "package_name": "com.wellnex.app"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "269960707574-286pdrukggh4rppkg93ldpclskti8792.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.wellnex.app",
-            "certificate_hash": "6f66374f55c462838670b883172a465d29f43d8a"
-          }
-        },
-        {
-          "client_id": "269960707574-3v9de6pa1k177kdgel4am0orh81vkbc8.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.wellnex.app",
-            "certificate_hash": "ad740f482e16281523b85d84f64b27f83235123a"
-          }
-        },
-        {
-          "client_id": "269960707574-8s1hk3qp7m5kg6c7nllg1l3g2i8r6h5h.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyAte74RKWCCHMTI3gJzjHuw_oI_D01iRdg"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "269960707574-8s1hk3qp7m5kg6c7nllg1l3g2i8r6h5h.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "269960707574-tqun44v6i7293rvsh1nrmin14nq2drnc.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.wellnex.app"
-              }
-            }
-          ]
-        }
-      }
     }
   ],
   "configuration_version": "1"
