@@ -1,7 +1,6 @@
 import { SentryExceptionFilter } from "./sentry-exception.filter";
 import { HttpException } from "@nestjs/common";
 import { I18nService } from "nestjs-i18n";
-import * as Sentry from "@sentry/nestjs";
 import { BaseExceptionFilter } from "@nestjs/core";
 
 jest.mock("@sentry/nestjs", () => ({

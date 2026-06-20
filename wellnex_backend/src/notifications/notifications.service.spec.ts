@@ -3,6 +3,8 @@ import { NotificationsService } from "./notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import * as admin from "firebase-admin";
 import { Logger } from "@nestjs/common";
+import { Resend } from "resend";
+import * as brevo from "@getbrevo/brevo";
 
 jest.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
 jest.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
@@ -53,8 +55,8 @@ describe("NotificationsService", () => {
     jest.clearAllMocks();
     (admin as any).apps = [];
     mMessaging = admin.messaging();
-    mResend = new (require("resend").Resend)();
-    mBrevo = new (require("@getbrevo/brevo").TransactionalEmailsApi)();
+    mResend = new Resend();
+    mBrevo = new brevo.TransactionalEmailsApi();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
