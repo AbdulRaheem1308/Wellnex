@@ -32,8 +32,6 @@ jest.mock("resend", () => ({
   })),
 }));
 
-
-
 describe("NotificationsService", () => {
   let service: NotificationsService;
   let prismaService: PrismaService;
@@ -45,7 +43,7 @@ describe("NotificationsService", () => {
     (admin as any).apps = [];
     mMessaging = admin.messaging();
     mResend = new Resend();
-    
+
     global.fetch = jest.fn();
 
     const module: TestingModule = await Test.createTestingModule({
@@ -73,6 +71,8 @@ describe("NotificationsService", () => {
     }).compile();
 
     service = module.get<NotificationsService>(NotificationsService);
+    (service as any).resendClient = mResend;
+    (service as any).brevoApiKey = "test_brevo";
     prismaService = module.get<PrismaService>(PrismaService);
   });
 
@@ -232,15 +232,12 @@ describe("NotificationsService", () => {
 
   describe("sendEmail", () => {
     it("should not send email if RESEND_API_KEY is not set", async () => {
-      const oldKey = process.env.RESEND_API_KEY;
-      delete process.env.RESEND_API_KEY;
+      (service as any).resendClient = null;
       const result = await service.sendEmail("test@test.com", "Subj", "<html>");
       expect(result).toBe(false);
-      if (oldKey) process.env.RESEND_API_KEY = oldKey;
     });
 
     it("should send email successfully", async () => {
-      process.env.RESEND_API_KEY = "test_key";
       mResend.emails.send.mockResolvedValue({ id: "123" });
       const result = await service.sendEmail("test@test.com", "Subj", "<html>");
       expect(result).toBe(true);
@@ -248,10 +245,8 @@ describe("NotificationsService", () => {
     });
 
     it("should handle email send error and fallback to brevo fetch", async () => {
-      process.env.RESEND_API_KEY = "test_key";
-      process.env.BREVO_API_KEY = "test_brevo";
       mResend.emails.send.mockRejectedValue(new Error("Send error"));
-      
+
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
         json: async () => ({ messageId: "123" }),
@@ -262,13 +257,14 @@ describe("NotificationsService", () => {
       expect(mResend.emails.send).toHaveBeenCalled();
       expect(global.fetch).toHaveBeenCalledWith(
         "https://api.brevo.com/v3/smtp/email",
-        expect.any(Object)
+        expect.any(Object),
       );
     });
   });
 
   describe("createAndNotify", () => {
     it("should send push and email via createAndNotify", async () => {
+      (service as any).fcmEnabled = true;
       process.env.RESEND_API_KEY = "test_key";
       prismaService.user.findUnique = jest.fn().mockResolvedValue({
         fcmToken: "token123",
@@ -277,7 +273,7 @@ describe("NotificationsService", () => {
       mMessaging.send.mockResolvedValue("messages/123");
       mResend.emails.send.mockResolvedValue({ id: "123" });
 
-      await service.createAndNotify("u1", "T", "M", "alert", { email: true });
+      await service.createAndNotify("u1", "T", "M", "alert", undefined, true);
 
       expect(mMessaging.send).toHaveBeenCalled();
       expect(mResend.emails.send).toHaveBeenCalled();

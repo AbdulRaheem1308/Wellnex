@@ -113,17 +113,22 @@ export class OtpService {
 
         if (this.brevoApiKey) {
           try {
-            const response = await fetch("https://api.brevo.com/v3/smtp/email", {
-              method: "POST",
-              headers: {
-                "api-key": this.brevoApiKey,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                sender: { name: "Wellnex", email: "no-reply@joinwellnex.com" },
-                to: [{ email: email }],
-                subject: "Your Wellnex OTP Verification Code",
-                htmlContent: `
+            const response = await fetch(
+              "https://api.brevo.com/v3/smtp/email",
+              {
+                method: "POST",
+                headers: {
+                  "api-key": this.brevoApiKey,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  sender: {
+                    name: "Wellnex",
+                    email: "no-reply@joinwellnex.com",
+                  },
+                  to: [{ email: email }],
+                  subject: "Your Wellnex OTP Verification Code",
+                  htmlContent: `
                   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
                     <h2 style="color: #4CAF50; text-align: center;">Welcome to Wellnex!</h2>
                     <p style="font-size: 16px; color: #333;">Hello,</p>
@@ -135,17 +140,23 @@ export class OtpService {
                     <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;" />
                     <p style="font-size: 12px; color: #999; text-align: center;">If you did not request this code, please ignore this email.</p>
                   </div>
-                `
-              }),
-            });
+                `,
+                }),
+              },
+            );
 
             if (!response.ok) {
               throw new Error(`Brevo API error: ${response.statusText}`);
             }
 
-            this.logger.log(`OTP successfully sent via Brevo fallback to ${email}`);
+            this.logger.log(
+              `OTP successfully sent via Brevo fallback to ${email}`,
+            );
           } catch (brevoError: any) {
-            this.logger.error(`Both Resend and Brevo failed to send email to ${email}:`, brevoError.message);
+            this.logger.error(
+              `Both Resend and Brevo failed to send email to ${email}:`,
+              brevoError.message,
+            );
             this.logOtpForDevelopment(email, otp);
           }
         } else {

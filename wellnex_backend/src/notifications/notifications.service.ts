@@ -282,7 +282,7 @@ export class NotificationsService {
               sender: { name: "Wellnex", email: "no-reply@joinwellnex.com" },
               to: [{ email: to }],
               subject: subject,
-              htmlContent: html
+              htmlContent: html,
             }),
           });
 
@@ -290,10 +290,15 @@ export class NotificationsService {
             throw new Error(`Brevo API error: ${response.statusText}`);
           }
 
-          this.logger.log(`Email successfully sent via Brevo fallback to ${to}`);
+          this.logger.log(
+            `Email successfully sent via Brevo fallback to ${to}`,
+          );
           return true;
         } catch (brevoError: any) {
-          this.logger.error(`Both Resend and Brevo failed to send email to ${to}:`, brevoError.message);
+          this.logger.error(
+            `Both Resend and Brevo failed to send email to ${to}:`,
+            brevoError.message,
+          );
           return false;
         }
       } else {

@@ -24,7 +24,6 @@ jest.mock("resend", () => ({
   })),
 }));
 
-
 describe("OtpService", () => {
   let mockConfigService: any;
 
@@ -215,7 +214,7 @@ describe("OtpService", () => {
         resendClient.emails.send.mockRejectedValueOnce(
           new Error("resend down"),
         );
-        
+
         (global.fetch as jest.Mock).mockResolvedValueOnce({
           ok: true,
           json: async () => ({ messageId: "456" }),
@@ -226,7 +225,7 @@ describe("OtpService", () => {
         expect(resendClient.emails.send).toHaveBeenCalled();
         expect(global.fetch).toHaveBeenCalledWith(
           "https://api.brevo.com/v3/smtp/email",
-          expect.any(Object)
+          expect.any(Object),
         );
         expect(validLoggerSpy).toHaveBeenCalledWith(
           "OTP successfully sent via Brevo fallback to test@test.com",
