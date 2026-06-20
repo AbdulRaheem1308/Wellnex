@@ -8,7 +8,7 @@ class AppConstants {
   // API
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://stepify-backend-vd4d.onrender.com/api/v1',
+    defaultValue: 'https://joinwellnex.com/api/v1',
   );
 
   // Storage Keys

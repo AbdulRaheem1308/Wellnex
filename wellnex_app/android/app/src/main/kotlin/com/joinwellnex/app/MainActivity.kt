@@ -1,4 +1,4 @@
-package com.wellnex.app
+package com.joinwellnex.app
 
 import io.flutter.embedding.android.FlutterActivity
 

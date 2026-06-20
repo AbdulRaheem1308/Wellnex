@@ -1,4 +1,4 @@
-package com.wellnex.app
+package com.joinwellnex.app
 
 import android.app.Notification
 import android.app.NotificationChannel

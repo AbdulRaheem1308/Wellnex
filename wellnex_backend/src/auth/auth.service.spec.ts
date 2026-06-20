@@ -129,10 +129,10 @@ describe("AuthService", () => {
       mockRedis.setOtp.mockResolvedValue(true);
       mockOtp.sendEmailOtp.mockResolvedValue(undefined);
 
-      const result = await service.sendOtp({ email: "user@wellnex.app" });
+      const result = await service.sendOtp({ email: "user@joinwellnex.com" });
 
       expect(mockOtp.sendEmailOtp).toHaveBeenCalledWith(
-        "user@wellnex.app",
+        "user@joinwellnex.com",
         "123456",
       );
       expect(result.message).toContain("email");

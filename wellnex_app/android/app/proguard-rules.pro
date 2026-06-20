@@ -1,5 +1,5 @@
 # App Main Activity
--keep class com.wellnex.app.MainActivity { *; }
+-keep class com.joinwellnex.app.MainActivity { *; }
 
 # Flutter Wrapper
 -keep class io.flutter.app.** { *; }

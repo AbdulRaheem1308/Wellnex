@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.wellnex.app</string>
+	<string>com.joinwellnex.app</string>
 	<key>PROJECT_ID</key>
 	<string>wellnex-8bc04</string>
 	<key>STORAGE_BUCKET</key>

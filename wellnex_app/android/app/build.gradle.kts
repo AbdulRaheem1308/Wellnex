@@ -11,7 +11,7 @@ import java.io.FileInputStream
 import java.util.Properties
 
 android {
-    namespace = "com.wellnex.app"
+    namespace = "com.joinwellnex.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -27,7 +27,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.wellnex.app"
+        applicationId = "com.joinwellnex.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 29
