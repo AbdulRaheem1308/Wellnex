@@ -45,7 +45,7 @@ export const createTeam = async (req: Request, res: Response, next: NextFunction
   try {
     const { name, isPrivate } = req.body;
     const team = await prisma.team.create({
-      data: { name, isPrivate, totalSteps: 0 }
+      data: { name, totalSteps: 0 }
     });
     res.status(201).json({ success: true, data: team });
   } catch (error) {

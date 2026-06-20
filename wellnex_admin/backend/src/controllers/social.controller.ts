@@ -52,7 +52,6 @@ export const createFeedPost = async (req: Request, res: Response, next: NextFunc
       data: {
         userId: user.id,
         content,
-        imageUrl,
         postType: "MANUAL"
       }
     });
