@@ -1,7 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import * as admin from "firebase-admin";
-import * as nodemailer from "nodemailer";
+import { Resend } from "resend";
+import * as brevo from "@getbrevo/brevo";
 
 export interface NotificationItem {
   id: string;
@@ -16,7 +17,8 @@ export interface NotificationItem {
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
   private readonly fcmEnabled: boolean;
-  private readonly transporter: nodemailer.Transporter;
+  private readonly resendClient: Resend | null = null;
+  private readonly brevoClient: brevo.TransactionalEmailsApi | null = null;
 
   constructor(private readonly prisma: PrismaService) {
     // Firebase Admin is initialized once in the app lifecycle.
@@ -46,17 +48,23 @@ export class NotificationsService {
 
     this.fcmEnabled = admin.apps.length > 0;
 
-    // Initialize Nodemailer for Emails
-    this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || "smtp.example.com",
-      port: Number.parseInt(process.env.SMTP_PORT || "587"),
-      secure: process.env.SMTP_SECURE === "true",
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
+    // Initialize Resend for Emails
+    const resendApiKey = process.env.RESEND_API_KEY;
+    if (resendApiKey) {
+      this.resendClient = new Resend(resendApiKey);
+    }
+
+    const brevoApiKey = process.env.BREVO_API_KEY;
+    if (brevoApiKey) {
+      this.brevoClient = new brevo.TransactionalEmailsApi();
+      this.brevoClient.setApiKey(
+        brevo.TransactionalEmailsApiApiKeys.apiKey,
+        brevoApiKey,
+      );
+      this.logger.log("Brevo client initialized for notifications fallback");
+    }
   }
+
 
   // ── FCM Token Registration ─────────────────────────────────────────────────
 
@@ -247,23 +255,42 @@ export class NotificationsService {
    * Send an Email Notification
    */
   async sendEmail(to: string, subject: string, html: string): Promise<boolean> {
-    if (!process.env.SMTP_USER) {
-      this.logger.debug(`Email not sent to ${to} (SMTP not configured)`);
+    if (!this.resendClient) {
+      this.logger.debug(`Email not sent to ${to} (Resend API key not configured)`);
       return false;
     }
 
     try {
-      await this.transporter.sendMail({
-        from: `"Wellnex" <${process.env.SMTP_USER}>`,
+      await this.resendClient.emails.send({
+        from: "Wellnex <no-reply@joinwellnex.com>",
         to,
         subject,
         html,
       });
-      this.logger.log(`Email sent successfully to ${to}`);
+      this.logger.log(`Email sent successfully to ${to} via Resend`);
       return true;
-    } catch (error) {
-      this.logger.error(`Failed to send email to ${to}`, error);
-      return false;
+    } catch (error: any) {
+      this.logger.warn(`Resend failed for ${to}, attempting fallback to Brevo: ${error.message}`);
+      
+      if (this.brevoClient) {
+        try {
+          const sendSmtpEmail = new brevo.SendSmtpEmail();
+          sendSmtpEmail.subject = subject;
+          sendSmtpEmail.htmlContent = html;
+          sendSmtpEmail.sender = { name: "Wellnex", email: "no-reply@joinwellnex.com" };
+          sendSmtpEmail.to = [{ email: to }];
+          
+          await this.brevoClient.sendTransacEmail(sendSmtpEmail);
+          this.logger.log(`Email successfully sent via Brevo fallback to ${to}`);
+          return true;
+        } catch (brevoError: any) {
+          this.logger.error(`Both Resend and Brevo failed to send email to ${to}:`, brevoError.message);
+          return false;
+        }
+      } else {
+        this.logger.error(`No Brevo client configured for fallback. Failed to send email to ${to}`);
+        return false;
+      }
     }
   }
 

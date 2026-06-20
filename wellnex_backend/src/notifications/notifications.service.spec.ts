@@ -2,7 +2,6 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { NotificationsService } from "./notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import * as admin from "firebase-admin";
-import * as nodemailer from "nodemailer";
 import { Logger } from "@nestjs/common";
 
 jest.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
@@ -24,23 +23,38 @@ jest.mock("firebase-admin", () => {
   };
 });
 
-jest.mock("nodemailer", () => ({
-  createTransport: jest.fn().mockReturnValue({
-    sendMail: jest.fn(),
-  }),
+jest.mock("resend", () => ({
+  Resend: jest.fn().mockImplementation(() => ({
+    emails: {
+      send: jest.fn(),
+    },
+  })),
+}));
+
+jest.mock("@getbrevo/brevo", () => ({
+  TransactionalEmailsApi: jest.fn().mockImplementation(() => ({
+    setApiKey: jest.fn(),
+    sendTransacEmail: jest.fn(),
+  })),
+  TransactionalEmailsApiApiKeys: {
+    apiKey: 0,
+  },
+  SendSmtpEmail: jest.fn().mockImplementation(() => ({})),
 }));
 
 describe("NotificationsService", () => {
   let service: NotificationsService;
   let prismaService: PrismaService;
   let mMessaging: any;
-  let mTransporter: any;
+  let mResend: any;
+  let mBrevo: any;
 
   beforeEach(async () => {
     jest.clearAllMocks();
     (admin as any).apps = [];
     mMessaging = admin.messaging();
-    mTransporter = nodemailer.createTransport({});
+    mResend = new (require("resend").Resend)();
+    mBrevo = new (require("@getbrevo/brevo").TransactionalEmailsApi)();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -225,46 +239,48 @@ describe("NotificationsService", () => {
   });
 
   describe("sendEmail", () => {
-    it("should not send email if SMTP_USER is not set", async () => {
-      const oldUser = process.env.SMTP_USER;
-      delete process.env.SMTP_USER;
-      const res = await service.sendEmail("test@test.com", "Subj", "html");
-      expect(res).toBe(false);
-      if (oldUser) process.env.SMTP_USER = oldUser;
+    it("should not send email if RESEND_API_KEY is not set", async () => {
+      const oldKey = process.env.RESEND_API_KEY;
+      delete process.env.RESEND_API_KEY;
+      const result = await service.sendEmail("test@test.com", "Subj", "<html>");
+      expect(result).toBe(false);
+      if (oldKey) process.env.RESEND_API_KEY = oldKey;
     });
 
     it("should send email successfully", async () => {
-      process.env.SMTP_USER = "admin@test.com";
-      mTransporter.sendMail.mockResolvedValue(true);
-      const res = await service.sendEmail("test@test.com", "Subj", "html");
-      expect(res).toBe(true);
-      expect(mTransporter.sendMail).toHaveBeenCalled();
+      process.env.RESEND_API_KEY = "test_key";
+      mResend.emails.send.mockResolvedValue({ id: "123" });
+      const result = await service.sendEmail("test@test.com", "Subj", "<html>");
+      expect(result).toBe(true);
+      expect(mResend.emails.send).toHaveBeenCalled();
     });
 
-    it("should handle email send error", async () => {
-      process.env.SMTP_USER = "admin@test.com";
-      mTransporter.sendMail.mockRejectedValue(new Error("Send error"));
-      const res = await service.sendEmail("test@test.com", "Subj", "html");
-      expect(res).toBe(false);
+    it("should handle email send error and fallback to brevo", async () => {
+      process.env.RESEND_API_KEY = "test_key";
+      process.env.BREVO_API_KEY = "test_brevo";
+      mResend.emails.send.mockRejectedValue(new Error("Send error"));
+      mBrevo.sendTransacEmail.mockResolvedValue({ messageId: "123" });
+      const result = await service.sendEmail("test@test.com", "Subj", "<html>");
+      expect(result).toBe(true);
+      expect(mResend.emails.send).toHaveBeenCalled();
+      expect(mBrevo.sendTransacEmail).toHaveBeenCalled();
     });
   });
 
   describe("createAndNotify", () => {
-    it("should create notification, push and email", async () => {
-      (service as any).fcmEnabled = true;
-      process.env.SMTP_USER = "admin@test.com";
-      (prismaService.notification.create as jest.Mock).mockResolvedValue({});
-      (prismaService.user.findUnique as jest.Mock).mockResolvedValue({
-        fcmToken: "t1",
-        email: "u@t.com",
+    it("should send push and email via createAndNotify", async () => {
+      process.env.RESEND_API_KEY = "test_key";
+      prismaService.user.findUnique = jest.fn().mockResolvedValue({
+        fcmToken: "token123",
+        email: "test@test.com",
       });
-      mTransporter.sendMail.mockResolvedValue(true);
+      mMessaging.send.mockResolvedValue("messages/123");
+      mResend.emails.send.mockResolvedValue({ id: "123" });
 
-      await service.createAndNotify("u1", "title", "msg", "type", {}, true);
+      await service.createAndNotify("u1", "T", "M", "alert", { email: true });
 
-      expect(prismaService.notification.create).toHaveBeenCalled();
-      expect(prismaService.user.findUnique).toHaveBeenCalled();
-      expect(mTransporter.sendMail).toHaveBeenCalled();
+      expect(mMessaging.send).toHaveBeenCalled();
+      expect(mResend.emails.send).toHaveBeenCalled();
     });
   });
 

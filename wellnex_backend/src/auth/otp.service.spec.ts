@@ -16,6 +16,25 @@ jest.mock("twilio", () => {
   };
 });
 
+jest.mock("resend", () => ({
+  Resend: jest.fn().mockImplementation(() => ({
+    emails: {
+      send: jest.fn(),
+    },
+  })),
+}));
+
+jest.mock("@getbrevo/brevo", () => ({
+  TransactionalEmailsApi: jest.fn().mockImplementation(() => ({
+    setApiKey: jest.fn(),
+    sendTransacEmail: jest.fn(),
+  })),
+  TransactionalEmailsApiApiKeys: {
+    apiKey: 0,
+  },
+  SendSmtpEmail: jest.fn().mockImplementation(() => ({})),
+}));
+
 describe("OtpService", () => {
   let mockConfigService: any;
 
@@ -166,7 +185,52 @@ describe("OtpService", () => {
     });
 
     describe("sendEmailOtp", () => {
-      it("should log email OTP to console", async () => {
+      it("should use resend if client initialized", async () => {
+        mockConfigService.get.mockImplementation((k: string) => {
+          if (k === "RESEND_API_KEY") return "valid-key";
+          return null;
+        });
+
+        const validService = new OtpService(mockConfigService);
+        const validLoggerSpy = jest
+          .spyOn((validService as any).logger, "log")
+          .mockImplementation();
+
+        const resendClient = (validService as any).resendClient;
+        resendClient.emails.send.mockResolvedValueOnce({ id: "123" });
+
+        await validService.sendEmailOtp("test@test.com", "555555");
+
+        expect(resendClient.emails.send).toHaveBeenCalled();
+        expect(validLoggerSpy).toHaveBeenCalledWith("OTP sent via email to test@test.com");
+      });
+
+      it("should fallback to brevo if resend fails", async () => {
+        mockConfigService.get.mockImplementation((k: string) => {
+          if (k === "RESEND_API_KEY") return "valid-key";
+          if (k === "BREVO_API_KEY") return "valid-brevo-key";
+          return null;
+        });
+
+        const validService = new OtpService(mockConfigService);
+        const validLoggerSpy = jest
+          .spyOn((validService as any).logger, "log")
+          .mockImplementation();
+
+        const resendClient = (validService as any).resendClient;
+        const brevoClient = (validService as any).brevoClient;
+
+        resendClient.emails.send.mockRejectedValueOnce(new Error("resend down"));
+        brevoClient.sendTransacEmail.mockResolvedValueOnce({ messageId: "456" });
+
+        await validService.sendEmailOtp("test@test.com", "555555");
+
+        expect(resendClient.emails.send).toHaveBeenCalled();
+        expect(brevoClient.sendTransacEmail).toHaveBeenCalled();
+        expect(validLoggerSpy).toHaveBeenCalledWith("OTP successfully sent via Brevo fallback to test@test.com");
+      });
+
+      it("should log email OTP to console if no resend client", async () => {
         await service.sendEmailOtp("test@test.com", "555555");
         expect(loggerLogSpy).toHaveBeenCalledWith("Code: 555555");
         expect(loggerLogSpy).toHaveBeenCalledWith(
