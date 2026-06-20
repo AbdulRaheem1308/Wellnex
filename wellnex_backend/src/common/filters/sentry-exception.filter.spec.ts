@@ -6,7 +6,11 @@ import { BaseExceptionFilter } from "@nestjs/core";
 jest.mock("@sentry/nestjs", () => ({
   captureException: jest.fn(),
   SentryExceptionCaptured: jest.fn(() => {
-    return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
+    return (
+      target: any,
+      propertyKey: string,
+      descriptor: PropertyDescriptor,
+    ) => {
       return descriptor;
     };
   }),

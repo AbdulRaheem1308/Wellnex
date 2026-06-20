@@ -202,7 +202,9 @@ describe("OtpService", () => {
         await validService.sendEmailOtp("test@test.com", "555555");
 
         expect(resendClient.emails.send).toHaveBeenCalled();
-        expect(validLoggerSpy).toHaveBeenCalledWith("OTP sent via email to test@test.com");
+        expect(validLoggerSpy).toHaveBeenCalledWith(
+          "OTP sent via email to test@test.com",
+        );
       });
 
       it("should fallback to brevo if resend fails", async () => {
@@ -220,14 +222,20 @@ describe("OtpService", () => {
         const resendClient = (validService as any).resendClient;
         const brevoClient = (validService as any).brevoClient;
 
-        resendClient.emails.send.mockRejectedValueOnce(new Error("resend down"));
-        brevoClient.sendTransacEmail.mockResolvedValueOnce({ messageId: "456" });
+        resendClient.emails.send.mockRejectedValueOnce(
+          new Error("resend down"),
+        );
+        brevoClient.sendTransacEmail.mockResolvedValueOnce({
+          messageId: "456",
+        });
 
         await validService.sendEmailOtp("test@test.com", "555555");
 
         expect(resendClient.emails.send).toHaveBeenCalled();
         expect(brevoClient.sendTransacEmail).toHaveBeenCalled();
-        expect(validLoggerSpy).toHaveBeenCalledWith("OTP successfully sent via Brevo fallback to test@test.com");
+        expect(validLoggerSpy).toHaveBeenCalledWith(
+          "OTP successfully sent via Brevo fallback to test@test.com",
+        );
       });
 
       it("should log email OTP to console if no resend client", async () => {

@@ -112,8 +112,10 @@ export class OtpService {
         });
         this.logger.log(`OTP sent via email to ${email}`);
       } catch (error: any) {
-        this.logger.warn(`Resend failed for ${email}, attempting fallback to Brevo: ${error.message}`);
-        
+        this.logger.warn(
+          `Resend failed for ${email}, attempting fallback to Brevo: ${error.message}`,
+        );
+
         if (this.brevoClient) {
           try {
             const sendSmtpEmail = new brevo.SendSmtpEmail();
@@ -131,17 +133,27 @@ export class OtpService {
                 <p style="font-size: 12px; color: #999; text-align: center;">If you did not request this code, please ignore this email.</p>
               </div>
             `;
-            sendSmtpEmail.sender = { name: "Wellnex", email: "no-reply@joinwellnex.com" };
+            sendSmtpEmail.sender = {
+              name: "Wellnex",
+              email: "no-reply@joinwellnex.com",
+            };
             sendSmtpEmail.to = [{ email: email }];
-            
+
             await this.brevoClient.sendTransacEmail(sendSmtpEmail);
-            this.logger.log(`OTP successfully sent via Brevo fallback to ${email}`);
+            this.logger.log(
+              `OTP successfully sent via Brevo fallback to ${email}`,
+            );
           } catch (brevoError: any) {
-            this.logger.error(`Both Resend and Brevo failed to send email to ${email}:`, brevoError.message);
+            this.logger.error(
+              `Both Resend and Brevo failed to send email to ${email}:`,
+              brevoError.message,
+            );
             this.logOtpForDevelopment(email, otp);
           }
         } else {
-          this.logger.error(`No Brevo client configured for fallback. Failed to send email to ${email}`);
+          this.logger.error(
+            `No Brevo client configured for fallback. Failed to send email to ${email}`,
+          );
           this.logOtpForDevelopment(email, otp);
         }
       }

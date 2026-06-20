@@ -65,7 +65,6 @@ export class NotificationsService {
     }
   }
 
-
   // ── FCM Token Registration ─────────────────────────────────────────────────
 
   /**
@@ -256,7 +255,9 @@ export class NotificationsService {
    */
   async sendEmail(to: string, subject: string, html: string): Promise<boolean> {
     if (!this.resendClient) {
-      this.logger.debug(`Email not sent to ${to} (Resend API key not configured)`);
+      this.logger.debug(
+        `Email not sent to ${to} (Resend API key not configured)`,
+      );
       return false;
     }
 
@@ -270,25 +271,37 @@ export class NotificationsService {
       this.logger.log(`Email sent successfully to ${to} via Resend`);
       return true;
     } catch (error: any) {
-      this.logger.warn(`Resend failed for ${to}, attempting fallback to Brevo: ${error.message}`);
-      
+      this.logger.warn(
+        `Resend failed for ${to}, attempting fallback to Brevo: ${error.message}`,
+      );
+
       if (this.brevoClient) {
         try {
           const sendSmtpEmail = new brevo.SendSmtpEmail();
           sendSmtpEmail.subject = subject;
           sendSmtpEmail.htmlContent = html;
-          sendSmtpEmail.sender = { name: "Wellnex", email: "no-reply@joinwellnex.com" };
+          sendSmtpEmail.sender = {
+            name: "Wellnex",
+            email: "no-reply@joinwellnex.com",
+          };
           sendSmtpEmail.to = [{ email: to }];
-          
+
           await this.brevoClient.sendTransacEmail(sendSmtpEmail);
-          this.logger.log(`Email successfully sent via Brevo fallback to ${to}`);
+          this.logger.log(
+            `Email successfully sent via Brevo fallback to ${to}`,
+          );
           return true;
         } catch (brevoError: any) {
-          this.logger.error(`Both Resend and Brevo failed to send email to ${to}:`, brevoError.message);
+          this.logger.error(
+            `Both Resend and Brevo failed to send email to ${to}:`,
+            brevoError.message,
+          );
           return false;
         }
       } else {
-        this.logger.error(`No Brevo client configured for fallback. Failed to send email to ${to}`);
+        this.logger.error(
+          `No Brevo client configured for fallback. Failed to send email to ${to}`,
+        );
         return false;
       }
     }
