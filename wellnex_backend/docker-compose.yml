@@ -40,6 +40,7 @@ services:
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://wellnex:password@postgres:5432/wellnex?schema=public
+      - DIRECT_URL=postgresql://wellnex:password@postgres:5432/wellnex?schema=public
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - PORT=3000
@@ -57,6 +58,7 @@ services:
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://wellnex:password@postgres:5432/wellnex?schema=public
+      - DIRECT_URL=postgresql://wellnex:password@postgres:5432/wellnex?schema=public
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       # Set a flag that our app could read to only boot workers
