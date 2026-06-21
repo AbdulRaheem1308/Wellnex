@@ -8,6 +8,7 @@ import 'package:wellnex_app/l10n/app_localizations.dart';
 
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/settings_provider.dart';
 
 /// Settings & Preferences Screen (Screen 7)
@@ -453,12 +454,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              // TODO: Call API DELETE /users/me and logout
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Account deletion initiated.')),
+                const SnackBar(content: Text('Deleting account...')),
               );
+              
+              try {
+                await ref.read(authProvider.notifier).deleteAccount();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Account deleted successfully.')),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to delete account: $e'),
+                      backgroundColor: AppTheme.error,
+                    ),
+                  );
+                }
+              }
             },
             child: const Text('Delete Forever', style: TextStyle(color: AppTheme.error)),
           ),

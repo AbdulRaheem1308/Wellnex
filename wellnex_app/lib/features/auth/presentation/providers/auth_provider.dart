@@ -211,6 +211,19 @@ class AuthNotifier extends StateNotifier<AuthState> {
     _router.go(AppRoutes.login);
   }
 
+  /// Delete Account
+  Future<void> deleteAccount() async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      await _apiService.delete('/users/me');
+      await logout();
+    } catch (e) {
+      final error = ApiError.from(e);
+      state = state.copyWith(isLoading: false, error: error.message);
+      throw error;
+    }
+  }
+
   /// Update user profile
   Future<void> updateProfile(Map<String, dynamic> data) async {
     state = state.copyWith(isLoading: true, error: null);
