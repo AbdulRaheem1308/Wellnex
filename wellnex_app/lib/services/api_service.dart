@@ -258,11 +258,15 @@ class ApiService {
     Map<String, dynamic>? queryParameters,
     CancelToken? cancelToken,
   }) async {
-    return _dio.get(
-      path,
-      queryParameters: queryParameters,
-      cancelToken: cancelToken,
-    );
+    try {
+      return await _dio.get(
+        path,
+        queryParameters: queryParameters,
+        cancelToken: cancelToken,
+      );
+    } catch (e) {
+      throw ApiError.from(e);
+    }
   }
 
   Future<Response<dynamic>> post(
@@ -271,12 +275,16 @@ class ApiService {
     Map<String, dynamic>? queryParameters,
     CancelToken? cancelToken,
   }) async {
-    return _dio.post(
-      path,
-      data: data,
-      queryParameters: queryParameters,
-      cancelToken: cancelToken,
-    );
+    try {
+      return await _dio.post(
+        path,
+        data: data,
+        queryParameters: queryParameters,
+        cancelToken: cancelToken,
+      );
+    } catch (e) {
+      throw ApiError.from(e);
+    }
   }
 
   Future<Response<dynamic>> put(
@@ -285,12 +293,16 @@ class ApiService {
     Map<String, dynamic>? queryParameters,
     CancelToken? cancelToken,
   }) async {
-    return _dio.put(
-      path,
-      data: data,
-      queryParameters: queryParameters,
-      cancelToken: cancelToken,
-    );
+    try {
+      return await _dio.put(
+        path,
+        data: data,
+        queryParameters: queryParameters,
+        cancelToken: cancelToken,
+      );
+    } catch (e) {
+      throw ApiError.from(e);
+    }
   }
 
   Future<Response<dynamic>> patch(
@@ -299,12 +311,16 @@ class ApiService {
     Map<String, dynamic>? queryParameters,
     CancelToken? cancelToken,
   }) async {
-    return _dio.patch(
-      path,
-      data: data,
-      queryParameters: queryParameters,
-      cancelToken: cancelToken,
-    );
+    try {
+      return await _dio.patch(
+        path,
+        data: data,
+        queryParameters: queryParameters,
+        cancelToken: cancelToken,
+      );
+    } catch (e) {
+      throw ApiError.from(e);
+    }
   }
 
   Future<Response<dynamic>> delete(
@@ -313,12 +329,16 @@ class ApiService {
     Map<String, dynamic>? queryParameters,
     CancelToken? cancelToken,
   }) async {
-    return _dio.delete(
-      path,
-      data: data,
-      queryParameters: queryParameters,
-      cancelToken: cancelToken,
-    );
+    try {
+      return await _dio.delete(
+        path,
+        data: data,
+        queryParameters: queryParameters,
+        cancelToken: cancelToken,
+      );
+    } catch (e) {
+      throw ApiError.from(e);
+    }
   }
 }
 

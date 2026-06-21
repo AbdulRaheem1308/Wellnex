@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../services/api_service.dart';
 import '../../../../services/storage_service.dart';
+import '../../../../core/router/app_router.dart';
 
 import '../../domain/models/user_model.dart';
 import '../../services/social_auth_service.dart';
@@ -43,6 +45,7 @@ final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
     ref.watch(apiServiceProvider),
     ref.watch(socialAuthServiceProvider),
     ref.watch(pushNotificationServiceProvider),
+    ref.watch(appRouterProvider),
   );
 });
 
@@ -57,8 +60,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final ApiService _apiService;
   final SocialAuthService _socialAuth;
   final PushNotificationService _pushService;
+  final GoRouter _router;
 
-  AuthNotifier(this._apiService, this._socialAuth, this._pushService)
+  AuthNotifier(this._apiService, this._socialAuth, this._pushService, this._router)
       : super(AuthState()) {
     _apiService.onAuthFailure = logout;
     _checkAuth();
@@ -204,6 +208,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     await StorageService.clearUser();
     
     state = AuthState();
+    _router.go(AppRoutes.login);
   }
 
   /// Update user profile
