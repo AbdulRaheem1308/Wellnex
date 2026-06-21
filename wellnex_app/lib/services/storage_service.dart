@@ -50,12 +50,10 @@ class StorageService {
     required String accessToken,
     required String refreshToken,
   }) async {
-    await Future.wait([
-      _secureStorage.write(
-          key: AppConstants.accessTokenKey, value: accessToken),
-      _secureStorage.write(
-          key: AppConstants.refreshTokenKey, value: refreshToken),
-    ]);
+    await _secureStorage.write(
+        key: AppConstants.accessTokenKey, value: accessToken);
+    await _secureStorage.write(
+        key: AppConstants.refreshTokenKey, value: refreshToken);
   }
 
   /// Returns the stored access token, or `null` if none exists.
