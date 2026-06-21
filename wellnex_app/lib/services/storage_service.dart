@@ -80,10 +80,8 @@ class StorageService {
   /// Deletes both tokens from the secure enclave.
   static Future<void> clearTokens() async {
     try {
-      await Future.wait([
-        _secureStorage.delete(key: AppConstants.accessTokenKey),
-        _secureStorage.delete(key: AppConstants.refreshTokenKey),
-      ]);
+      await _secureStorage.delete(key: AppConstants.accessTokenKey);
+      await _secureStorage.delete(key: AppConstants.refreshTokenKey);
     } catch (e) {
       debugPrint('StorageService: Error clearing tokens: $e');
     }
