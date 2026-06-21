@@ -29,6 +29,7 @@
         "test",
         "prisma",
         "performance",
+        "scripts",
         "**/*spec.ts"
     ]
 }
