@@ -11,6 +11,7 @@ import 'package:wellnex_app/features/auth/presentation/providers/auth_provider.d
 import 'package:wellnex_app/features/auth/services/social_auth_service.dart';
 import 'package:wellnex_app/services/api_service.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:go_router/go_router.dart';
 import 'package:wellnex_app/core/services/push_notification_service.dart';
 
 class MockSocialAuthService extends Mock implements SocialAuthService {}
@@ -19,13 +20,15 @@ class DummyApiService extends ApiService {}
 
 class FakeAuthNotifier extends AuthNotifier {
   final bool isNewUserResult;
-  FakeAuthNotifier(this.isNewUserResult) : super(DummyApiService(), MockSocialAuthService(), MockPushNotificationService());
+  FakeAuthNotifier(this.isNewUserResult) : super(DummyApiService(), MockSocialAuthService(), MockPushNotificationService(), MockGoRouter2());
 
   @override
   Future<bool> loginWithSocial(String idToken) async {
     return isNewUserResult;
   }
 }
+
+class MockGoRouter2 extends Mock implements GoRouter {}
 
 // Minimal stub for GoRouter context extension
 class MockGoRouter extends Mock {
