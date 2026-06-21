@@ -42,7 +42,12 @@ class _SplashScreenState extends State<SplashScreen> {
       if (!mounted) return;
 
       if (token != null) {
-        context.go(AppRoutes.home);
+        final user = StorageService.getUser();
+        if (user != null && (user['name'] == null || (user['name'] as String).isEmpty)) {
+          context.go(AppRoutes.completeProfile);
+        } else {
+          context.go(AppRoutes.home);
+        }
       } else {
         context.go(AppRoutes.login);
       }

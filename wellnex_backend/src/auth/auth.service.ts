@@ -179,6 +179,10 @@ export class AuthService {
       this.logger.log(
         `🔴 [loginWithSocial] Existing user found (ID: ${user.id}).`,
       );
+      if (!user.name) {
+        // Treat as new user if profile is incomplete
+        isNewUser = true;
+      }
     } else {
       this.logger.log(
         "🔴 [loginWithSocial] User not found. Creating new user...",
