@@ -16,6 +16,10 @@ class StorageService {
 
   static Box? _box;
 
+  // In-memory cache for fast, synchronous token access to bypass Android Keystore async delay
+  static String? _cachedAccessToken;
+  static String? _cachedRefreshToken;
+
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
@@ -50,6 +54,10 @@ class StorageService {
     required String accessToken,
     required String refreshToken,
   }) async {
+    // Cache in RAM immediately to avoid Keystore async reordering
+    _cachedAccessToken = accessToken;
+    _cachedRefreshToken = refreshToken;
+
     await _secureStorage.write(
         key: AppConstants.accessTokenKey, value: accessToken);
     await _secureStorage.write(
@@ -58,8 +66,12 @@ class StorageService {
 
   /// Returns the stored access token, or `null` if none exists.
   static Future<String?> getAccessToken() async {
+    if (_cachedAccessToken != null) return _cachedAccessToken;
+
     try {
-      return await _secureStorage.read(key: AppConstants.accessTokenKey);
+      final token = await _secureStorage.read(key: AppConstants.accessTokenKey);
+      _cachedAccessToken = token;
+      return token;
     } catch (e) {
       debugPrint('StorageService: Error reading access token: $e');
       await _secureStorage.deleteAll().catchError((_) {});
@@ -69,8 +81,12 @@ class StorageService {
 
   /// Returns the stored refresh token, or `null` if none exists.
   static Future<String?> getRefreshToken() async {
+    if (_cachedRefreshToken != null) return _cachedRefreshToken;
+
     try {
-      return await _secureStorage.read(key: AppConstants.refreshTokenKey);
+      final token = await _secureStorage.read(key: AppConstants.refreshTokenKey);
+      _cachedRefreshToken = token;
+      return token;
     } catch (e) {
       debugPrint('StorageService: Error reading refresh token: $e');
       return null;
@@ -79,6 +95,10 @@ class StorageService {
 
   /// Deletes both tokens from the secure enclave.
   static Future<void> clearTokens() async {
+    // Clear RAM instantly so fast logins don't see ghosts
+    _cachedAccessToken = null;
+    _cachedRefreshToken = null;
+
     try {
       await _secureStorage.delete(key: AppConstants.accessTokenKey);
       await _secureStorage.delete(key: AppConstants.refreshTokenKey);
