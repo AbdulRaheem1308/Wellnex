@@ -1,8 +1,8 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, NotFoundException, ConflictException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { RedisService } from "../redis/redis.service";
 import { CreateUserDto, UpdateUserDto } from "./dto/user.dto";
-import { TransactionType } from "@prisma/client";
+import { TransactionType, Prisma } from "@prisma/client";
 
 @Injectable()
 export class UsersService {
@@ -45,31 +45,53 @@ export class UsersService {
   async create(dto: CreateUserDto) {
     const referralCode = this.generateReferralCode();
 
-    const user = await this.prisma.user.create({
-      data: {
-        phone: dto.phone,
-        email: dto.email,
-        name: dto.name,
-        referralCode,
-        referredBy: dto.referredBy,
-        wallet: {
-          create: {
-            balance: 0,
-            lifetimePoints: 0,
+    let user;
+    try {
+      user = await this.prisma.user.create({
+        data: {
+          phone: dto.phone,
+          email: dto.email,
+          name: dto.name,
+          referralCode,
+          referredBy: dto.referredBy,
+          wallet: {
+            create: {
+              balance: 0,
+              lifetimePoints: 0,
+            },
+          },
+          streak: {
+            create: {
+              currentStreak: 0,
+              longestStreak: 0,
+            },
           },
         },
-        streak: {
-          create: {
-            currentStreak: 0,
-            longestStreak: 0,
-          },
+        include: {
+          wallet: true,
+          streak: true,
         },
-      },
-      include: {
-        wallet: true,
-        streak: true,
-      },
-    });
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        const target = (error.meta?.target as string[]) || [];
+        if (target.includes("phone")) {
+          throw new ConflictException(
+            "Phone number is already registered to another account",
+          );
+        }
+        if (target.includes("email")) {
+          throw new ConflictException(
+            "Email is already registered to another account",
+          );
+        }
+        throw new ConflictException("Unique constraint failed");
+      }
+      throw error;
+    }
 
     // Initialize all achievements for the new user (with unlocked=false)
     await this.initializeUserAchievements(user.id);
@@ -293,14 +315,35 @@ export class UsersService {
       fitnessLevel: fitnessLevel ?? undefined,
     };
 
-    return this.prisma.user.update({
-      where: { id },
-      data: updateData,
-      include: {
-        wallet: true,
-        streak: true,
-      },
-    });
+    try {
+      return await this.prisma.user.update({
+        where: { id },
+        data: updateData,
+        include: {
+          wallet: true,
+          streak: true,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        const target = (error.meta?.target as string[]) || [];
+        if (target.includes("phone")) {
+          throw new ConflictException(
+            "Phone number is already registered to another account",
+          );
+        }
+        if (target.includes("email")) {
+          throw new ConflictException(
+            "Email is already registered to another account",
+          );
+        }
+        throw new ConflictException("Unique constraint failed");
+      }
+      throw error;
+    }
   }
 
   /**
