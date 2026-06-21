@@ -471,7 +471,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 await ref.read(authProvider.notifier).deleteAccount();
                 
                 // Add cooling period
-                await Future.delayed(const Duration(milliseconds: 10000));
+                await Future.delayed(const Duration(milliseconds: 5000));
                 
                 if (context.mounted) {
                   Navigator.pop(context); // Remove dialog
