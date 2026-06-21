@@ -1078,8 +1078,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           title: const Text('Logout',
               style: TextStyle(color: AppTheme.error)),
           onTap: () async {
+            // Show non-dismissible loader
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (ctx) => const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen)),
+            );
+            
+            // Add cooling period
+            await Future.delayed(const Duration(milliseconds: 2500));
+            
+            if (mounted) {
+              Navigator.pop(context); // Remove dialog
+            }
             await ref.read(authProvider.notifier).logout();
-            if (mounted) context.go(AppRoutes.login);
+            // authProvider automatically redirects to login
           },
         ),
       ],

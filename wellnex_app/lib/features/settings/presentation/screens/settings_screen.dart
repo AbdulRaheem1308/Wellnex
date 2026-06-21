@@ -460,15 +460,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 const SnackBar(content: Text('Deleting account...')),
               );
               
+              // Show non-dismissible loader
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (ctx) => const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen)),
+              );
+              
               try {
                 await ref.read(authProvider.notifier).deleteAccount();
+                
+                // Add cooling period
+                await Future.delayed(const Duration(milliseconds: 2500));
+                
                 if (context.mounted) {
+                  Navigator.pop(context); // Remove dialog
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Account deleted successfully.')),
                   );
                 }
               } catch (e) {
                 if (context.mounted) {
+                  Navigator.pop(context); // Remove dialog
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Failed to delete account: $e'),
