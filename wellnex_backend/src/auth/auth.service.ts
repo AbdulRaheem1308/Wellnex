@@ -60,7 +60,7 @@ export class AuthService {
     const canLogin = await this.redis.checkLoginCooldown(identifier);
     if (!canLogin) {
       throw new HttpException(
-        "Please wait 30 seconds before logging back in.",
+        "Please wait 20 seconds before logging back in.",
         HttpStatus.TOO_MANY_REQUESTS
       );
     }
@@ -183,7 +183,7 @@ export class AuthService {
     const canLogin = await this.redis.checkLoginCooldown(email);
     if (!canLogin) {
       throw new HttpException(
-        "Please wait 30 seconds before logging back in.",
+        "Please wait 20 seconds before logging back in.",
         HttpStatus.TOO_MANY_REQUESTS
       );
     }
@@ -277,12 +277,12 @@ export class AuthService {
       where: { token: refreshToken },
     });
 
-    // Set a 30-second login cooldown to prevent Android Keystore race condition
+    // Set a 20-second login cooldown to prevent Android Keystore race condition
     if (user?.email) {
-      await this.redis.setLoginCooldown(user.email, 30);
+      await this.redis.setLoginCooldown(user.email, 20);
     }
     if (user?.phone) {
-      await this.redis.setLoginCooldown(user.phone, 30);
+      await this.redis.setLoginCooldown(user.phone, 20);
     }
   }
 
