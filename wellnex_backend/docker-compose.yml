@@ -43,6 +43,9 @@ services:
       - DIRECT_URL=postgresql://wellnex:password@postgres:5432/wellnex?schema=public
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - JWT_SECRET=wellnex-dev-jwt-secret-2024
+      - JWT_REFRESH_SECRET=wellnex-dev-jwt-refresh-secret-2024
+      - JWT_EXPIRY=7d
       - PORT=3000
     depends_on:
       postgres:
@@ -61,6 +64,9 @@ services:
       - DIRECT_URL=postgresql://wellnex:password@postgres:5432/wellnex?schema=public
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - JWT_SECRET=wellnex-dev-jwt-secret-2024
+      - JWT_REFRESH_SECRET=wellnex-dev-jwt-refresh-secret-2024
+      - JWT_EXPIRY=7d
       # Set a flag that our app could read to only boot workers
       - WORKER_MODE=true
     depends_on:
