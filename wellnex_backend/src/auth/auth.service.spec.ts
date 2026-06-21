@@ -191,8 +191,7 @@ describe("AuthService", () => {
         id: "user-1",
         phone: "+919876543210",
         name: "Raheem",
-        heightCm: 180,
-        weightKg: 75,
+        isProfileCreated: true,
         isActive: true,
       };
       mockUsers.findByIdentifier.mockResolvedValue(existingUser);
@@ -327,7 +326,7 @@ describe("AuthService", () => {
       mockSocialAuth.verifyIdToken.mockResolvedValue({
         email: "test@apple.com",
       });
-      const mockUser = { id: "user-1", email: "test@apple.com", name: "Apple User", heightCm: 175, weightKg: 70 };
+      const mockUser = { id: "user-1", email: "test@apple.com", name: "Apple User", isProfileCreated: true };
       mockUsers.findByIdentifier.mockResolvedValue(mockUser);
       mockPrisma.refreshToken.create.mockResolvedValue({});
 
@@ -340,7 +339,7 @@ describe("AuthService", () => {
       mockSocialAuth.verifyIdToken.mockResolvedValue({
         email: "test@apple.com",
       });
-      const mockUser = { id: "user-1", email: "test@apple.com", name: null, heightCm: 175, weightKg: 70 };
+      const mockUser = { id: "user-1", email: "test@apple.com", name: null, isProfileCreated: false };
       mockUsers.findByIdentifier.mockResolvedValue(mockUser);
       mockPrisma.refreshToken.create.mockResolvedValue({});
 

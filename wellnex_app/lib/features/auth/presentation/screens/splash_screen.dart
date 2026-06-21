@@ -43,7 +43,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
       if (token != null) {
         final user = StorageService.getUser();
-        if (user != null && (user['name'] == null || (user['name'] as String).isEmpty || user['heightCm'] == null || user['weightKg'] == null)) {
+        if (user != null && user['isProfileCreated'] != true) {
           context.go(AppRoutes.completeProfile);
         } else {
           context.go(AppRoutes.home);

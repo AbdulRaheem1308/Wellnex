@@ -97,6 +97,11 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   fitnessLevel?: string;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  isProfileCreated?: boolean;
 }
 
 export class ApplyReferralDto {

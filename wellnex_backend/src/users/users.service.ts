@@ -313,6 +313,7 @@ export class UsersService {
       avatarUrl: dto.avatarUrl,
       activityPreferences: dto.activityPreferences ?? undefined,
       fitnessLevel: fitnessLevel ?? undefined,
+      isProfileCreated: dto.isProfileCreated ?? undefined,
     };
 
     try {

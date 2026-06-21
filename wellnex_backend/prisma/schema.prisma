@@ -71,6 +71,8 @@ model User {
   countryCode String @default("IN") // ISO 3166-1 alpha-2 country code
 
   isActive  Boolean  @default(true)
+  isAccountCreated Boolean @default(true)
+  isProfileCreated Boolean @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

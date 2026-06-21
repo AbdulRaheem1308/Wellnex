@@ -124,7 +124,7 @@ export class AuthService {
       if (dto.referralCode) {
         await this.attributeReferralRewards(user.id, dto.referralCode);
       }
-    } else if (!user.name || !user.heightCm || !user.weightKg) {
+    } else if (!user.isProfileCreated) {
       // Treat as new user if profile is incomplete
       isNewUser = true;
     }
@@ -179,7 +179,7 @@ export class AuthService {
       this.logger.log(
         `🔴 [loginWithSocial] Existing user found (ID: ${user.id}).`,
       );
-      if (!user.name || !user.heightCm || !user.weightKg) {
+      if (!user.isProfileCreated) {
         // Treat as new user if profile is incomplete
         isNewUser = true;
       }

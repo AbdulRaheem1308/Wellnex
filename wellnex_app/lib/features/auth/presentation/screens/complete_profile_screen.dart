@@ -128,6 +128,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
         'age': age,
         'dailyStepGoal': _stepGoal.toInt(),
         'avatarUrl': _avatars.isNotEmpty ? _avatars[_selectedAvatarIndex]['url'] : 'default',
+        'isProfileCreated': true,
       };
       
       // Call API
