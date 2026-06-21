@@ -346,6 +346,7 @@ void main() {
         );
 
         final notifier = container.read(dashboardProvider.notifier);
+        final subscription = container.listen(dashboardProvider, (_, __) {});
 
         // Verify initialization calls
         expect(notifier.state.user != null, isTrue);
@@ -381,6 +382,7 @@ void main() {
         );
 
         final notifier = container.read(dashboardProvider.notifier);
+        final subscription = container.listen(dashboardProvider, (_, __) {});
         await notifier.fetchTodayData();
 
         // 1. Test optimistic UI updates and backend sync
@@ -411,6 +413,7 @@ void main() {
         );
 
         final notifier = container.read(dashboardProvider.notifier);
+        final subscription = container.listen(dashboardProvider, (_, __) {});
         await notifier.fetchTodayData();
 
         mockApiService.putCalled = false;
@@ -435,6 +438,7 @@ void main() {
         );
 
         final notifier = container.read(dashboardProvider.notifier);
+        final subscription = container.listen(dashboardProvider, (_, __) {});
         mockApiService.getCalled = false;
 
         // Call lifecyle state change
@@ -463,6 +467,7 @@ void main() {
         );
 
         final notifier = container.read(dashboardProvider.notifier);
+        final subscription = container.listen(dashboardProvider, (_, __) {});
 
         // Let listener start
         await Future.delayed(const Duration(milliseconds: 50));
@@ -499,6 +504,7 @@ void main() {
       );
 
       final notifier = container.read(dashboardProvider.notifier);
+        final subscription = container.listen(dashboardProvider, (_, __) {});
 
       mockHealthService.mockSteps = 7000;
       mockHealthService.shouldAuthorize = true;
@@ -534,6 +540,7 @@ void main() {
         );
 
         final notifier = container.read(dashboardProvider.notifier);
+        final subscription = container.listen(dashboardProvider, (_, __) {});
 
         // Mock wallet with 2800 XP to execute deep level calculations
         mockApiService.mockWalletResponse = {
@@ -562,6 +569,7 @@ void main() {
         );
 
         final notifier = container.read(dashboardProvider.notifier);
+        final subscription = container.listen(dashboardProvider, (_, __) {});
         
         mockApiService.mockTodayStepsResponse = {
           'stepCount': 500,
@@ -602,6 +610,7 @@ void main() {
         );
 
         final notifier = container.read(dashboardProvider.notifier);
+        final subscription = container.listen(dashboardProvider, (_, __) {});
 
         // Configure history values
         final yesterday = DateTime.now().subtract(const Duration(days: 1));
@@ -630,6 +639,7 @@ void main() {
         );
 
         final notifier = container.read(dashboardProvider.notifier);
+        final subscription = container.listen(dashboardProvider, (_, __) {});
 
         // Force APIs to fail
         mockApiService.shouldThrowError = true;

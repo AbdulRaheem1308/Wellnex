@@ -519,6 +519,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
         _apiService.get('/users/me/stats'),
       ]);
 
+      if (!mounted) return;
+
       // Calculate XP based on monthly XP (Season Level)
       final walletData = WalletInfo.fromJson(results[2].data);
       // Fallback to lifetimePoints if monthlyXp is missing (e.g. older users before migration)
@@ -574,6 +576,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
         userStats: userStats,
       );
     } catch (e) {
+      if (!mounted) return;
       // On error, handle gracefully and reset loading state
       state = state.copyWith(
         isLoading: false,
