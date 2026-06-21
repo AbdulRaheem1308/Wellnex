@@ -249,31 +249,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                 ],
               ),
               
-              const SizedBox(height: 24),
-              
-              // Dev Mode Hint (Remove in production)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppTheme.info.withAlpha(26),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, color: AppTheme.info),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        AppLocalizations.of(context)?.devModeOtp ?? 'Dev Mode: Check console for OTP if Twilio is not configured',
-                        style: TextStyle(
-                          color: AppTheme.info,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+
             ],
           ),
         ),
