@@ -37,10 +37,33 @@ export class NotificationsService {
         } catch (e) {
           this.logger.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON", e);
         }
+      } else if (
+        process.env.FIREBASE_PROJECT_ID &&
+        process.env.FIREBASE_CLIENT_EMAIL &&
+        process.env.FIREBASE_PRIVATE_KEY
+      ) {
+        try {
+          admin.initializeApp({
+            credential: admin.credential.cert({
+              projectId: process.env.FIREBASE_PROJECT_ID,
+              clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+              privateKey: process.env.FIREBASE_PRIVATE_KEY.replaceAll(
+                "\\n",
+                "\n",
+              ),
+            }),
+          });
+          this.logger.log("Firebase Admin SDK initialized from ENV vars");
+        } catch (e) {
+          this.logger.error(
+            "Failed to initialize Firebase Admin from ENV vars",
+            e,
+          );
+        }
       } else {
         this.logger.warn(
-          "FIREBASE_SERVICE_ACCOUNT_JSON not set — FCM push notifications disabled. " +
-            "Download your Firebase service account JSON and set it as a single-line env var.",
+          "Firebase credentials not set — FCM push notifications disabled. " +
+            "Set FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_PROJECT_ID/CLIENT_EMAIL/PRIVATE_KEY.",
         );
       }
     }
@@ -139,7 +162,6 @@ export class NotificationsService {
         notification: {
           channelId: "wellnex_default",
           sound: "default",
-          icon: "ic_notification",
         },
       },
       apns: {
