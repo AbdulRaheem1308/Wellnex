@@ -205,7 +205,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     _pushService.clearTokenOnLogout().ignore();
 
     await StorageService.clearTokens();
-    await StorageService.clearUser();
+    await StorageService.clearSessionData();
     
     state = AuthState();
     _router.go(AppRoutes.login);

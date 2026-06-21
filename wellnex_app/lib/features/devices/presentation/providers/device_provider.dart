@@ -242,7 +242,7 @@ class DeviceNotifier extends StateNotifier<DeviceState> {
 
 final healthServiceProvider = Provider<HealthService>((ref) => HealthService());
 
-final deviceProvider = StateNotifierProvider<DeviceNotifier, DeviceState>((ref) {
+final deviceProvider = StateNotifierProvider.autoDispose<DeviceNotifier, DeviceState>((ref) {
   return DeviceNotifier(
     ref.watch(apiServiceProvider),
     ref.watch(healthServiceProvider),

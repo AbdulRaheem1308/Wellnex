@@ -217,7 +217,7 @@ class DailyStep {
 }
 
 /// Dashboard Provider
-final dashboardProvider = StateNotifierProvider<DashboardNotifier, DashboardState>((ref) {
+final dashboardProvider = StateNotifierProvider.autoDispose<DashboardNotifier, DashboardState>((ref) {
   return DashboardNotifier(
     ref.watch(apiServiceProvider),
     ref.watch(healthServiceProvider),

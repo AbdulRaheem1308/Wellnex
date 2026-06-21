@@ -252,6 +252,6 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   }
 }
 
-final settingsProvider = StateNotifierProvider<SettingsNotifier, AppSettings>((ref) {
+final settingsProvider = StateNotifierProvider.autoDispose<SettingsNotifier, AppSettings>((ref) {
   return SettingsNotifier(ref.watch(apiServiceProvider));
 });

@@ -107,7 +107,7 @@ class HealthSyncNotifier extends StateNotifier<bool> {
   }
 }
 
-final healthSyncProvider = StateNotifierProvider<HealthSyncNotifier, bool>((ref) {
+final healthSyncProvider = StateNotifierProvider.autoDispose<HealthSyncNotifier, bool>((ref) {
   return HealthSyncNotifier(
     HealthService(),
     ref.read(activityProvider.notifier),

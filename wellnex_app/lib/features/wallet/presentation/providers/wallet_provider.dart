@@ -178,7 +178,7 @@ class WalletState {
 
 /// Wallet Provider
 final walletProvider =
-    StateNotifierProvider<WalletNotifier, WalletState>((ref) {
+    StateNotifierProvider.autoDispose<WalletNotifier, WalletState>((ref) {
   return WalletNotifier(ref.watch(apiServiceProvider));
 });
 

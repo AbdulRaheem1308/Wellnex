@@ -129,6 +129,20 @@ class StorageService {
     await _openBox.delete(AppConstants.userKey);
   }
 
+  /// Clears all user-specific session data from the Hive box, but preserves
+  /// app preferences like theme and onboarding status.
+  static Future<void> clearSessionData() async {
+    final keysToKeep = [
+      AppConstants.onboardingCompleteKey,
+      AppConstants.themeKey,
+    ];
+    
+    final keysToDelete = _openBox.keys.where((k) => !keysToKeep.contains(k)).toList();
+    for (var key in keysToDelete) {
+      await _openBox.delete(key);
+    }
+  }
+
   // ── Onboarding ─────────────────────────────────────────────────────────────
 
   static bool isOnboardingComplete() {
