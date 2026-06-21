@@ -325,13 +325,25 @@ describe("AuthService", () => {
       mockSocialAuth.verifyIdToken.mockResolvedValue({
         email: "test@apple.com",
       });
-      const mockUser = { id: "user-1", email: "test@apple.com" };
+      const mockUser = { id: "user-1", email: "test@apple.com", name: "Apple User" };
       mockUsers.findByIdentifier.mockResolvedValue(mockUser);
       mockPrisma.refreshToken.create.mockResolvedValue({});
 
       const result = await service.loginWithSocial({ idToken: "token" });
       expect(result.isNewUser).toBe(false);
       expect(result.tokens.accessToken).toBe("mock-jwt-token");
+    });
+
+    it("should return isNewUser=true if existing user has no name (incomplete profile)", async () => {
+      mockSocialAuth.verifyIdToken.mockResolvedValue({
+        email: "test@apple.com",
+      });
+      const mockUser = { id: "user-1", email: "test@apple.com", name: null };
+      mockUsers.findByIdentifier.mockResolvedValue(mockUser);
+      mockPrisma.refreshToken.create.mockResolvedValue({});
+
+      const result = await service.loginWithSocial({ idToken: "token" });
+      expect(result.isNewUser).toBe(true);
     });
 
     it("should create new user, process referral, and return tokens", async () => {
