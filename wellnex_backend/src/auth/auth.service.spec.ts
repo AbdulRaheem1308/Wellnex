@@ -33,6 +33,7 @@ const mockPrisma: any = {
 
 const mockRedis = {
   checkOtpRateLimit: jest.fn(),
+  checkLoginCooldown: jest.fn().mockResolvedValue(true),
   setOtp: jest.fn(),
   getOtp: jest.fn(),
   deleteOtp: jest.fn(),

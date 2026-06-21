@@ -14,7 +14,7 @@ import {
   SocialLoginDto,
 } from "./dto/auth.dto";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard";
-import { CurrentUser } from "../users/decorators/current-user.decorator";
+import { CurrentUser } from "./decorators/current-user.decorator";
 import {
   ApiTags,
   ApiOperation,

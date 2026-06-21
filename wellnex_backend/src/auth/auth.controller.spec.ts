@@ -109,11 +109,12 @@ describe("AuthController", () => {
   describe("logout", () => {
     it("should call authService.logout", async () => {
       const dto: RefreshTokenDto = { refreshToken: "refresh_token" };
+      const user = { email: "test@example.com" };
 
-      const result = await controller.logout(dto);
+      const result = await controller.logout(dto, user);
 
       expect(result).toEqual({ message: "Logged out successfully" });
-      expect(authService.logout).toHaveBeenCalledWith(dto.refreshToken);
+      expect(authService.logout).toHaveBeenCalledWith(dto.refreshToken, user);
     });
   });
 });
