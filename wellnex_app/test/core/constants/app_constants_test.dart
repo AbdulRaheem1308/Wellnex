@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wellnex_app/core/constants/app_constants.dart';
-import 'package:flutter/foundation.dart';
 
 void main() {
   group('AppConstants', () {

@@ -2,7 +2,6 @@
 // This file is kept temporarily for backward compatibility, although all internal imports
 // have been updated to use the unified notifications_provider.dart.
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'notifications_provider.dart';
 
 // We also re-export the entire unified provider file so that if anything

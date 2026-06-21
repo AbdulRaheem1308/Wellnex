@@ -462,13 +462,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               
               try {
                 await ref.read(authProvider.notifier).deleteAccount();
-                if (mounted) {
+                if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Account deleted successfully.')),
                   );
                 }
               } catch (e) {
-                if (mounted) {
+                if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Failed to delete account: $e'),

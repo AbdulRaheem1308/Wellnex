@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:wellnex_app/core/widgets/empty_state_widget.dart';
 
 void main() {
-  Widget _buildTestable(Widget child, {Brightness brightness = Brightness.light}) {
+  Widget buildTestable(Widget child, {Brightness brightness = Brightness.light}) {
     return MaterialApp(
       theme: ThemeData(brightness: brightness),
       home: Scaffold(body: child),
@@ -12,7 +12,7 @@ void main() {
 
   group('EmptyStateWidget', () {
     testWidgets('renders title and icon correctly', (tester) async {
-      await tester.pumpWidget(_buildTestable(
+      await tester.pumpWidget(buildTestable(
         const EmptyStateWidget(title: 'Custom Title', icon: Icons.star),
       ));
 
@@ -21,7 +21,7 @@ void main() {
     });
 
     testWidgets('renders subtitle if provided', (tester) async {
-      await tester.pumpWidget(_buildTestable(
+      await tester.pumpWidget(buildTestable(
         const EmptyStateWidget(
           title: 'Title',
           subtitle: 'A helpful subtitle',
@@ -33,7 +33,7 @@ void main() {
 
     testWidgets('renders action button if label and callback provided', (tester) async {
       bool tapped = false;
-      await tester.pumpWidget(_buildTestable(
+      await tester.pumpWidget(buildTestable(
         EmptyStateWidget(
           title: 'Title',
           actionLabel: 'Click Me',
@@ -50,7 +50,7 @@ void main() {
     });
 
     testWidgets('renders Semantics correctly', (tester) async {
-      await tester.pumpWidget(_buildTestable(
+      await tester.pumpWidget(buildTestable(
         const EmptyStateWidget(
           title: 'No Data',
           subtitle: 'Check later',
@@ -66,7 +66,7 @@ void main() {
     });
     
     testWidgets('adapts to dark mode without exceptions', (tester) async {
-      await tester.pumpWidget(_buildTestable(
+      await tester.pumpWidget(buildTestable(
         const EmptyStateWidget(title: 'Dark Mode Test', subtitle: 'subtitle'),
         brightness: Brightness.dark,
       ));

@@ -101,6 +101,12 @@ dev_dependencies:
   flutter_native_splash: ^2.4.7
   path_provider_platform_interface: ^2.1.2
 
+  device_info_plus_platform_interface: any
+  meta: any
+  firebase_core_platform_interface: any
+  flutter_local_notifications_platform_interface: any
+  plugin_platform_interface: any
+  firebase_messaging_platform_interface: any
 flutter:
   generate: true
   uses-material-design: true

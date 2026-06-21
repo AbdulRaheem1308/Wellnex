@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:wellnex_app/features/companies/domain/models/company_model.dart';
 import 'package:wellnex_app/services/api_service.dart';
 import 'package:wellnex_app/services/company_service.dart';
 

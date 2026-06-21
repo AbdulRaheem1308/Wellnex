@@ -284,7 +284,6 @@ class MockQuestsNotifier extends StateNotifier<QuestsState> implements QuestsNot
   String? lastJoinedQuestId;
   bool clearErrorCalled = false;
 
-  @override
   Future<void> fetchQuests() async {}
 
   @override

@@ -16,7 +16,7 @@ void main() {
   });
 
   group('ApiError.from — DioException with response', () {
-    DioException _makeResponseError(
+    DioException makeResponseError(
         int statusCode, dynamic body, DioExceptionType type) {
       final requestOptions = RequestOptions(path: '/test');
       final response = Response<dynamic>(
@@ -32,7 +32,7 @@ void main() {
     }
 
     test('extracts message from Map response body', () {
-      final error = _makeResponseError(
+      final error = makeResponseError(
         422,
         {'message': 'Email already exists'},
         DioExceptionType.badResponse,
@@ -43,7 +43,7 @@ void main() {
     });
 
     test('uses String response body as message', () {
-      final error = _makeResponseError(
+      final error = makeResponseError(
         500,
         'Internal Server Error',
         DioExceptionType.badResponse,
@@ -53,7 +53,7 @@ void main() {
     });
 
     test('falls back to generic message when body is null', () {
-      final error = _makeResponseError(
+      final error = makeResponseError(
         503,
         null,
         DioExceptionType.badResponse,
@@ -65,7 +65,7 @@ void main() {
   });
 
   group('ApiError.from — DioException without response', () {
-    DioException _makeNetworkError(DioExceptionType type) {
+    DioException makeNetworkError(DioExceptionType type) {
       return DioException(
         requestOptions: RequestOptions(path: '/test'),
         type: type,
@@ -73,26 +73,26 @@ void main() {
     }
 
     test('maps connectionTimeout to timeout message', () {
-      final error = _makeNetworkError(DioExceptionType.connectionTimeout);
+      final error = makeNetworkError(DioExceptionType.connectionTimeout);
       final apiError = ApiError.from(error);
       expect(apiError.message.toLowerCase(), contains('timed out'));
       expect(apiError.statusCode, isNull);
     });
 
     test('maps connectionError to connection message', () {
-      final error = _makeNetworkError(DioExceptionType.connectionError);
+      final error = makeNetworkError(DioExceptionType.connectionError);
       final apiError = ApiError.from(error);
       expect(apiError.message.toLowerCase(), contains('connection'));
     });
 
     test('maps badCertificate to security message', () {
-      final error = _makeNetworkError(DioExceptionType.badCertificate);
+      final error = makeNetworkError(DioExceptionType.badCertificate);
       final apiError = ApiError.from(error);
       expect(apiError.message.toLowerCase(), contains('security'));
     });
 
     test('maps cancel to cancelled message', () {
-      final error = _makeNetworkError(DioExceptionType.cancel);
+      final error = makeNetworkError(DioExceptionType.cancel);
       final apiError = ApiError.from(error);
       expect(apiError.message.toLowerCase(), contains('cancel'));
     });

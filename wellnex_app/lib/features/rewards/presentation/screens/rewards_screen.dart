@@ -9,7 +9,6 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../services/api_service.dart';
 import '../../../wallet/presentation/providers/wallet_provider.dart';
 import '../providers/rewards_catalog_provider.dart';
-import '../widgets/reward_card.dart';
 
 /// Unified Rewards Hub Screen
 /// Combines: Wallet/Ledger | Rewards Catalog | Achievements

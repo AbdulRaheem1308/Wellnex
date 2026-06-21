@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 
 /// Team model for team challenges feature
 class Team {

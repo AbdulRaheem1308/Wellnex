@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:dio/dio.dart';
 import 'package:wellnex_app/features/teams/data/models/team_model.dart';
-import 'package:wellnex_app/features/teams/presentation/providers/teams_provider.dart';
 import 'package:wellnex_app/features/teams/presentation/screens/team_detail_screen.dart';
 import 'package:wellnex_app/services/api_service.dart';
 import 'package:wellnex_app/features/auth/presentation/providers/auth_provider.dart';

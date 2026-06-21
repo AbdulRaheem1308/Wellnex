@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wellnex_app/features/dashboard/presentation/widgets/explainer_bottom_sheet.dart';
-import 'package:wellnex_app/core/theme/app_theme.dart';
 
 void main() {
   testWidgets('ExplainerBottomSheet shows correctly with items', (tester) async {

@@ -1,13 +1,9 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_core_platform_interface/test.dart';
 import 'package:wellnex_app/core/services/push_notification_service.dart';
 import 'package:wellnex_app/services/api_service.dart';
@@ -74,12 +70,14 @@ void main() {
     registerFallbackValue(mockMessagingPlatform);
     registerFallbackValue(FakeFirebaseApp());
 
+    // ignore: invalid_use_of_protected_member
     when(() => mockMessagingPlatform.delegateFor(
           app: any(named: 'app'),
         )).thenReturn(mockMessagingPlatform);
 
     when(() => mockMessagingPlatform.isAutoInitEnabled).thenReturn(true);
 
+    // ignore: invalid_use_of_protected_member
     when(() => mockMessagingPlatform.setInitialValues(
           isAutoInitEnabled: any(named: 'isAutoInitEnabled'),
         )).thenReturn(mockMessagingPlatform);

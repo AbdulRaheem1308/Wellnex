@@ -4,8 +4,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:posthog_flutter/posthog_flutter.dart';
 
-import 'package:flutter/foundation.dart';
-import 'dart:io';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/router/app_router.dart';

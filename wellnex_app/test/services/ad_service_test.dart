@@ -39,7 +39,7 @@ void main() {
       expect(bannerAd?.size, equals(AdSize.banner));
       
       // Simulate calling the listeners manually if possible
-      final listener = bannerAd!.listener as BannerAdListener;
+      final listener = bannerAd!.listener;
       
       // Trigger onAdLoaded
       listener.onAdLoaded?.call(bannerAd);

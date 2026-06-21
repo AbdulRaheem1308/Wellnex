@@ -6,7 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:dio/dio.dart';
 
-import 'package:wellnex_app/features/wallet/presentation/providers/wallet_provider.dart';
 import 'package:wellnex_app/features/wallet/presentation/screens/wallet_screen.dart';
 import 'package:wellnex_app/services/api_service.dart';
 
