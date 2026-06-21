@@ -550,6 +550,14 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException("User not found");
 
+    // Set a 30-second login cooldown to prevent fast-relogin issues
+    if (user.email) {
+      await this.redis.setLoginCooldown(user.email, 30);
+    }
+    if (user.phone) {
+      await this.redis.setLoginCooldown(user.phone, 30);
+    }
+
     // Delete user (Prisma cascade will handle steps, wallet, settings, etc.)
     await this.prisma.user.delete({
       where: { id: userId },

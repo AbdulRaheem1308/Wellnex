@@ -3,6 +3,8 @@ import {
   UnauthorizedException,
   BadRequestException,
   Logger,
+  HttpException,
+  HttpStatus,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
@@ -52,6 +54,15 @@ export class AuthService {
     const identifier = dto.phone || dto.email;
     if (!identifier) {
       throw new BadRequestException("Phone or email is required");
+    }
+
+    // Check login cooldown
+    const canLogin = await this.redis.checkLoginCooldown(identifier);
+    if (!canLogin) {
+      throw new HttpException(
+        "Please wait 30 seconds before logging back in.",
+        HttpStatus.TOO_MANY_REQUESTS
+      );
     }
 
     // Check rate limit
@@ -168,6 +179,15 @@ export class AuthService {
       );
     }
 
+    // Check login cooldown
+    const canLogin = await this.redis.checkLoginCooldown(email);
+    if (!canLogin) {
+      throw new HttpException(
+        "Please wait 30 seconds before logging back in.",
+        HttpStatus.TOO_MANY_REQUESTS
+      );
+    }
+
     // 2. Find or Create User
     this.logger.log(
       `🔴 [loginWithSocial] Step 2: Looking up user by email (${email})...`,
@@ -252,10 +272,18 @@ export class AuthService {
   /**
    * Logout - invalidate refresh token
    */
-  async logout(refreshToken: string): Promise<void> {
+  async logout(refreshToken: string, user?: any): Promise<void> {
     await this.prisma.refreshToken.deleteMany({
       where: { token: refreshToken },
     });
+
+    // Set a 30-second login cooldown to prevent Android Keystore race condition
+    if (user?.email) {
+      await this.redis.setLoginCooldown(user.email, 30);
+    }
+    if (user?.phone) {
+      await this.redis.setLoginCooldown(user.phone, 30);
+    }
   }
 
   /**

@@ -14,6 +14,7 @@ import {
   SocialLoginDto,
 } from "./dto/auth.dto";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard";
+import { CurrentUser } from "../users/decorators/current-user.decorator";
 import {
   ApiTags,
   ApiOperation,
@@ -68,8 +69,8 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Logout and invalidate refresh token" })
   @ApiResponse({ status: 200, description: "Logged out successfully" })
-  async logout(@Body() dto: RefreshTokenDto) {
-    await this.authService.logout(dto.refreshToken);
+  async logout(@Body() dto: RefreshTokenDto, @CurrentUser() user: any) {
+    await this.authService.logout(dto.refreshToken, user);
     return { message: "Logged out successfully" };
   }
 }

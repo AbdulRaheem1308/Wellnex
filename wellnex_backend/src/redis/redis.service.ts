@@ -164,6 +164,42 @@ export class RedisService implements OnModuleDestroy {
     return this.client.ttl(key);
   }
 
+  // Login cooldown management
+  async checkLoginCooldown(identifier: string): Promise<boolean> {
+    if (!this.isRedisConnected()) {
+      const item = this.memoryStore.get(`login_cooldown:${identifier}`);
+      if (item && item.expiry > Date.now()) {
+        return false; // On cooldown
+      }
+      return true; // Not on cooldown
+    }
+    const key = `login_cooldown:${identifier}`;
+    const exists = await this.client.exists(key);
+    return exists === 0; // true if no cooldown
+  }
+
+  async setLoginCooldown(identifier: string, cooldownSeconds: number): Promise<void> {
+    if (!this.isRedisConnected()) {
+      this.memoryStore.set(`login_cooldown:${identifier}`, {
+        value: "1",
+        expiry: Date.now() + cooldownSeconds * 1000,
+      });
+      return;
+    }
+    const key = `login_cooldown:${identifier}`;
+    await this.client.setex(key, cooldownSeconds, "1");
+  }
+
+  async getLoginCooldownRemaining(identifier: string): Promise<number> {
+    if (!this.isRedisConnected()) {
+      const item = this.memoryStore.get(`login_cooldown:${identifier}`);
+      if (!item) return 0;
+      return Math.max(0, Math.ceil((item.expiry - Date.now()) / 1000));
+    }
+    const key = `login_cooldown:${identifier}`;
+    return this.client.ttl(key);
+  }
+
   // Cache helpers
   async setCache(
     key: string,
