@@ -26,9 +26,10 @@ RUN apk add --no-cache openssl
 COPY package*.json ./
 RUN npm ci --omit=dev --legacy-peer-deps
 
-# Copy Prisma client (generated in build stage)
+# Copy Prisma client and CLI
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/prisma ./prisma
 
 # Copy compiled output
@@ -36,4 +37,4 @@ COPY --from=builder /app/dist ./dist
 
 EXPOSE 3000
 
-CMD ["node", "dist/main.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
