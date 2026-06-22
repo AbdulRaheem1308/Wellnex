@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
@@ -11,6 +12,27 @@ import '../../../../services/storage_service.dart';
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
+  /// Override this in tests to skip the real delay and avoid fake-clock issues.
+  @visibleForTesting
+  static Duration? testSplashDelay;
+
+  /// Determines which route the splash screen should navigate to based on the
+  /// current auth/onboarding state. Extracted for unit-testability.
+  @visibleForTesting
+  static Future<String> resolveStartRoute() async {
+    final onboardingComplete = StorageService.isOnboardingComplete();
+    if (!onboardingComplete) return AppRoutes.onboarding;
+
+    final token = await StorageService.getAccessToken();
+    if (token == null) return AppRoutes.login;
+
+    final user = StorageService.getUser();
+    if (user != null && user['isProfileCreated'] != true) {
+      return AppRoutes.completeProfile;
+    }
+    return AppRoutes.home;
+  }
+
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
@@ -23,39 +45,18 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkAuthAndNavigate() async {
-    // Wait for animation
-    await Future.delayed(const Duration(milliseconds: 2500));
-    
-    if (!mounted) return;
-    
-    try {
-      // Check if onboarding is complete
-      final onboardingComplete = StorageService.isOnboardingComplete();
-      if (!onboardingComplete) {
-        context.go(AppRoutes.onboarding);
-        return;
-      }
-      
-      // Check if user is logged in
-      final token = await StorageService.getAccessToken();
-      
-      if (!mounted) return;
+    // Wait for animation (or skip in tests via testSplashDelay).
+    await Future.delayed(
+        SplashScreen.testSplashDelay ?? const Duration(milliseconds: 2500));
 
-      if (token != null) {
-        final user = StorageService.getUser();
-        if (user != null && user['isProfileCreated'] != true) {
-          context.go(AppRoutes.completeProfile);
-        } else {
-          context.go(AppRoutes.home);
-        }
-      } else {
-        context.go(AppRoutes.login);
-      }
+    if (!mounted) return;
+
+    try {
+      final route = await SplashScreen.resolveStartRoute();
+      if (mounted) context.go(route);
     } catch (e) {
-      debugPrint("Splash Screen: Error during auth check: $e");
-      if (mounted) {
-        context.go(AppRoutes.login);
-      }
+      debugPrint('Splash Screen: Error during auth check: $e');
+      if (mounted) context.go(AppRoutes.login);
     }
   }
 
