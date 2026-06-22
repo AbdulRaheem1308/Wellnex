@@ -88,6 +88,8 @@ void main() {
     final router = GoRouter(
       routes: [
         GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
+        GoRoute(path: '/login', builder: (context, state) => const Scaffold(body: Text('Login'))),
+        GoRoute(path: '/home', builder: (context, state) => const Scaffold(body: Text('Home'))),
         GoRoute(path: '/complete-profile', builder: (context, state) => const Scaffold(body: Text('CompleteProfile'))),
       ],
     );
@@ -111,6 +113,8 @@ void main() {
     final router = GoRouter(
       routes: [
         GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
+        GoRoute(path: '/login', builder: (context, state) => const Scaffold(body: Text('Login'))),
+        GoRoute(path: '/complete-profile', builder: (context, state) => const Scaffold(body: Text('CompleteProfile'))),
         GoRoute(path: '/home', builder: (context, state) => const Scaffold(body: Text('Home'))),
       ],
     );
