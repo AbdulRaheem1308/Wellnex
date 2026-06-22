@@ -74,7 +74,7 @@ void main() {
 
     await tester.pumpWidget(buildTestApp(router));
     await tester.pump(const Duration(milliseconds: 2600));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.text('Login'), findsOneWidget);
   });
 
@@ -97,7 +97,7 @@ void main() {
     print('Pumping time 2600ms');
     await tester.pump(const Duration(milliseconds: 2600));
     print('Pumping again');
-    await tester.pump();
+    await tester.pumpAndSettle();
     print('Checking expectation');
     expect(find.text('CompleteProfile'), findsOneWidget);
     print('Done test 3');
@@ -117,7 +117,7 @@ void main() {
 
     await tester.pumpWidget(buildTestApp(router));
     await tester.pump(const Duration(milliseconds: 2600));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.text('Home'), findsOneWidget);
   });
 }
