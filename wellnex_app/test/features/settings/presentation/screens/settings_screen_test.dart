@@ -201,16 +201,17 @@ void main() {
     expect(find.text('Delete Account?'), findsOneWidget);
 
     await tester.tap(find.text('Delete Forever'));
-    await tester.pump(); // Tap delete
-    await tester.pump(); // Dialog starts
-
-    // wait for future.delayed using runAsync
-    await tester.runAsync(() async {
-      await Future.delayed(const Duration(seconds: 5));
-    });
+    // Advance the fake clock until the snackbar appears
+    bool found = false;
+    for (int i = 0; i < 10; i++) {
+      await tester.pump(const Duration(seconds: 1));
+      if (tester.any(find.text('Account deleted successfully.'))) {
+        found = true;
+        break;
+      }
+    }
     
-    // Pump to let the snackbar show up
-    await tester.pump(const Duration(milliseconds: 100));
+    expect(found, isTrue, reason: 'Account deleted successfully text not found');
 
     expect(find.text('Account deleted successfully.'), findsOneWidget);
   });
