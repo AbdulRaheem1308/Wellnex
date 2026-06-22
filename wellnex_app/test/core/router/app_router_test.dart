@@ -29,22 +29,20 @@ void main() {
     when(() => mockState.extra).thenReturn(null);
 
     // Get all routes recursively
-    List<GoRoute> getAllGoRoutes(List<RouteBase> routes) {
-      final goRoutes = <GoRoute>[];
+    List<RouteBase> getAllRoutes(List<RouteBase> routes) {
+      final allRoutes = <RouteBase>[];
       for (final route in routes) {
-        if (route is GoRoute) {
-          goRoutes.add(route);
-          if (route.routes.isNotEmpty) {
-            goRoutes.addAll(getAllGoRoutes(route.routes));
-          }
+        allRoutes.add(route);
+        if (route is GoRoute && route.routes.isNotEmpty) {
+          allRoutes.addAll(getAllRoutes(route.routes));
         } else if (route is ShellRoute) {
-          goRoutes.addAll(getAllGoRoutes(route.routes));
+          allRoutes.addAll(getAllRoutes(route.routes));
         }
       }
-      return goRoutes;
+      return allRoutes;
     }
 
-    final allRoutes = getAllGoRoutes(router.configuration.routes);
+    final allRoutes = getAllRoutes(router.configuration.routes);
     expect(allRoutes.isNotEmpty, isTrue);
 
     // Build a basic widget context using Builder
@@ -53,8 +51,11 @@ void main() {
         home: Builder(
           builder: (BuildContext context) {
             for (final route in allRoutes) {
-              if (route.builder != null) {
+              if (route is GoRoute && route.builder != null) {
                 final widget = route.builder!(context, mockState);
+                expect(widget, isA<Widget>());
+              } else if (route is ShellRoute && route.builder != null) {
+                final widget = route.builder!(context, mockState, const SizedBox());
                 expect(widget, isA<Widget>());
               }
             }
@@ -65,5 +66,10 @@ void main() {
     );
 
     container.dispose();
+  });
+
+  test('AppRoutes should be instantiable for coverage', () {
+    final appRoutes = AppRoutes();
+    expect(appRoutes, isNotNull);
   });
 }

@@ -65,34 +65,50 @@ class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScree
   Future<void> _loadDiagnostics() async {
     setState(() => _isLoading = true);
     
-    // 1. Check permissions
-    final activityStatus = await Permission.activityRecognition.status;
+    try {
+      // 1. Check permissions
+      final activityStatus = await Permission.activityRecognition.status;
 
-    // 2. Read background sync stats from SharedPreferences
-    final prefs = await SharedPreferences.getInstance();
-    final bgLastRunVal = prefs.getString('bg_sync_last_run') ?? 'Never';
-    final bgLastStatusVal = prefs.getString('bg_sync_status') ?? 'N/A';
+      // 2. Read background sync stats from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final bgLastRunVal = prefs.getString('bg_sync_last_run') ?? 'Never';
+      final bgLastStatusVal = prefs.getString('bg_sync_status') ?? 'N/A';
 
-    // 3. Read Device Safety Info
-    final realDevice = await SafeDevice.isRealDevice;
-    final jailbroken = await SafeDevice.isJailBroken;
-    final mockLocation = await SafeDevice.isMockLocation;
+      // 3. Read Device Safety Info
+      bool realDevice = true;
+      bool jailbroken = false;
+      bool mockLocation = false;
+      try {
+        realDevice = await SafeDevice.isRealDevice;
+        jailbroken = await SafeDevice.isJailBroken;
+        mockLocation = await SafeDevice.isMockLocation;
+      } catch (e) {
+        debugPrint('SafeDevice check failed: $e');
+      }
 
-    // 4. Read Pedometer Storage baseline values
-    final baseSteps = StorageService.get<int>('pedometer_baseline_steps') ?? -1;
-    final baseDate = StorageService.get<String>('pedometer_last_sync_date') ?? 'N/A';
+      // 4. Read Pedometer Storage baseline values
+      final baseSteps = StorageService.get<int>('pedometer_baseline_steps') ?? -1;
+      final baseDate = StorageService.get<String>('pedometer_last_sync_date') ?? 'N/A';
 
-    setState(() {
-      _activityPermission = activityStatus;
-      _bgLastRun = bgLastRunVal;
-      _bgLastStatus = bgLastStatusVal;
-      _isRealDevice = realDevice;
-      _isJailbroken = jailbroken;
-      _isMockLocation = mockLocation;
-      _baselineSteps = baseSteps;
-      _baselineSyncDate = baseDate;
-      _isLoading = false;
-    });
+      if (mounted) {
+        setState(() {
+          _activityPermission = activityStatus;
+          _bgLastRun = bgLastRunVal;
+          _bgLastStatus = bgLastStatusVal;
+          _isRealDevice = realDevice;
+          _isJailbroken = jailbroken;
+          _isMockLocation = mockLocation;
+          _baselineSteps = baseSteps;
+          _baselineSyncDate = baseDate;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading diagnostics: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   void _startRealtimeSensorListening() {

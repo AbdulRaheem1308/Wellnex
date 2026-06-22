@@ -1,124 +1,219 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:wellnex_app/features/referral/presentation/providers/referral_provider.dart';
-import 'package:wellnex_app/features/referral/presentation/screens/referral_screen.dart';
-import 'package:wellnex_app/l10n/app_localizations.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:dio/dio.dart';
-import 'package:wellnex_app/services/api_service.dart';
-import 'package:wellnex_app/services/storage_service.dart';
-
-import 'package:hive_flutter/hive_flutter.dart';
-
+import 'package:go_router/go_router.dart';
+import 'package:wellnex_app/features/referral/presentation/screens/referral_screen.dart';
+import 'package:wellnex_app/features/referral/presentation/providers/referral_provider.dart';
+import 'package:wellnex_app/l10n/app_localizations.dart';
+import 'package:share_plus_platform_interface/share_plus_platform_interface.dart';
+import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'dart:io';
 
-class MockApiService extends Mock implements ApiService {}
+class MockReferralNotifier extends StateNotifier<ReferralState> with Mock implements ReferralNotifier {
+  MockReferralNotifier(super.state);
+}
+
+class FakePathProviderPlatform extends Fake with MockPlatformInterfaceMixin implements PathProviderPlatform {
+  @override
+  Future<String?> getTemporaryPath() async {
+    final dir = Directory.systemTemp.createTempSync('wellnex_test_');
+    return dir.path;
+  }
+}
+
+class FakeSharePlatform extends Fake with MockPlatformInterfaceMixin implements SharePlatform {
+  @override
+  Future<ShareResult> share(
+    String text, {
+    String? subject,
+    Rect? sharePositionOrigin,
+  }) async {
+    return const ShareResult('success', ShareResultStatus.success);
+  }
+
+  @override
+  Future<ShareResult> shareXFiles(
+    List<XFile> files, {
+    String? subject,
+    String? text,
+    Rect? sharePositionOrigin,
+    List<String>? fileNameOverrides,
+  }) async {
+    return const ShareResult('success', ShareResultStatus.success);
+  }
+}
 
 void main() {
-  setUpAll(() async {
-    final temp = await Directory.systemTemp.createTemp();
-    Hive.init(temp.path);
-    if (!Hive.isBoxOpen('wellnex_storage')) {
-      await StorageService.init();
-    }
+  late MockReferralNotifier mockNotifier;
+
+  setUpAll(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    PathProviderPlatform.instance = FakePathProviderPlatform();
+    SharePlatform.instance = FakeSharePlatform();
   });
-  Widget createWidget(ProviderContainer container) {
-    return UncontrolledProviderScope(
-      container: container,
-      child: const MaterialApp(
+
+  setUp(() {
+    mockNotifier = MockReferralNotifier(ReferralState(isLoading: true));
+    when(() => mockNotifier.fetchReferralData()).thenAnswer((_) => Future.value());
+    when(() => mockNotifier.clearError()).thenReturn(null);
+  });
+
+  Widget createWidgetUnderTest() {
+    final router = GoRouter(
+      initialLocation: '/referral',
+      routes: [
+        GoRoute(
+          path: '/referral',
+          builder: (context, state) => const ReferralScreen(),
+        ),
+        GoRoute(
+          path: '/referral-leaderboard',
+          builder: (context, state) => const Scaffold(body: Text('Leaderboard Page')),
+        ),
+      ],
+    );
+
+    return ProviderScope(
+      overrides: [
+        referralProvider.overrideWith((ref) => mockNotifier),
+      ],
+      child: MaterialApp.router(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: ReferralScreen(),
+        routerConfig: router,
       ),
     );
   }
 
-  testWidgets('ReferralScreen shows loading state', (tester) async {
-    final mockApiService = MockApiService();
-    when(() => mockApiService.get(any())).thenAnswer((_) async => Response(requestOptions: RequestOptions(path: ''), data: {}, statusCode: 200));
-
-    final state = ReferralState(isLoading: true);
-    final container = ProviderContainer(
-      overrides: [
-        referralProvider.overrideWith((ref) {
-          final notifier = ReferralNotifier(mockApiService);
-          notifier.state = state;
-          return notifier;
-        }),
-      ],
-    );
-
-    await tester.pumpWidget(createWidget(container));
-
+  testWidgets('renders loading state', (WidgetTester tester) async {
+    await tester.pumpWidget(createWidgetUnderTest());
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });
 
-  testWidgets('ReferralScreen displays stats and code correctly', (tester) async {
-    final mockApiService = MockApiService();
-    when(() => mockApiService.get(any())).thenAnswer((_) async => Response(requestOptions: RequestOptions(path: ''), data: {}, statusCode: 200));
-
-    final stats = const ReferralStats(
-      referralCode: 'TEST1234',
-      invitesSent: 10,
-      invitesAccepted: 4,
-      coinsEarned: 200,
-      milestones: [
-        ReferralMilestone(target: 1, reward: 50, isUnlocked: true),
-        ReferralMilestone(target: 5, reward: 100, isUnlocked: false),
-      ],
-    );
-    final leaderboard = [
-      const TopReferrer(id: '1', name: 'Alice', referrals: 10, rank: 1),
-    ];
-
-    final state = ReferralState(isLoading: false, stats: stats, leaderboard: leaderboard);
-    final container = ProviderContainer(
-      overrides: [
-        referralProvider.overrideWith((ref) {
-          final notifier = ReferralNotifier(mockApiService);
-          notifier.state = state;
-          return notifier;
-        }),
-      ],
-    );
-
-    await tester.pumpWidget(createWidget(container));
-
-    // Wait for animations
-    await tester.pumpAndSettle();
-
-    expect(find.text('TEST1234', skipOffstage: false), findsWidgets);
-    expect(find.text('10', skipOffstage: false), findsOneWidget); // invites sent
-    expect(find.text('4', skipOffstage: false), findsWidgets); // invites accepted
-    expect(find.text('200', skipOffstage: false), findsOneWidget); // coins earned
-
-    // Check milestones
-    expect(find.text('Progress', skipOffstage: false), findsOneWidget);
-    expect(find.text('Completed!', skipOffstage: false), findsWidgets);
+  testWidgets('shows error snackbar when state has error', (WidgetTester tester) async {
+    await tester.pumpWidget(createWidgetUnderTest());
     
-    // Check leaderboard
-    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -1000));
-    await tester.pumpAndSettle();
+    mockNotifier.state = ReferralState(
+      isLoading: false,
+      error: 'Test Error',
+    );
+    await tester.pump(); // Trigger listener
     
-    expect(find.text('Alice', skipOffstage: false), findsOneWidget);
-    expect(find.text('10 invites', skipOffstage: false), findsOneWidget);
+    expect(find.text('Test Error'), findsOneWidget);
+    verify(() => mockNotifier.clearError()).called(1);
   });
 
-  testWidgets('ReferralScreen shows error snackbar', (tester) async {
-    final mockApiService = MockApiService();
-    when(() => mockApiService.get(any())).thenThrow(Exception('API Error'));
+  testWidgets('renders stats and empty leaderboard', (WidgetTester tester) async {
+    mockNotifier.state = ReferralState(
+      isLoading: false,
+      stats: const ReferralStats(
+        referralCode: 'TESTCODE',
+        invitesSent: 5,
+        invitesAccepted: 2,
+        coinsEarned: 100,
+        milestones: [
+          ReferralMilestone(target: 1, reward: 50, isUnlocked: true),
+          ReferralMilestone(target: 3, reward: 100, isUnlocked: false),
+        ],
+      ),
+      leaderboard: [],
+    );
 
-    final container = ProviderContainer(
-      overrides: [
-        referralProvider.overrideWith((ref) => ReferralNotifier(mockApiService)),
+    await tester.pumpWidget(createWidgetUnderTest());
+    await tester.pumpAndSettle();
+
+    expect(find.text('TESTCODE'), findsOneWidget);
+    expect(find.text('2'), findsWidgets); // Used in accepted and progress
+    expect(find.text('100'), findsOneWidget); // Coins earned
+    
+    // Empty leaderboard text
+    expect(find.text('No top referrers yet'), findsOneWidget);
+  });
+
+  testWidgets('renders leaderboard with multiple ranks and view all nav', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    mockNotifier.state = ReferralState(
+      isLoading: false,
+      stats: const ReferralStats(referralCode: 'CODE', milestones: []),
+      leaderboard: [
+        TopReferrer(id: '1', name: 'User 1', referrals: 10, rank: 1),
+        TopReferrer(id: '2', name: 'User 2', referrals: 8, rank: 2),
+        TopReferrer(id: '3', name: 'User 3', referrals: 5, rank: 3),
+        TopReferrer(id: '4', name: 'User 4', referrals: 2, rank: 4),
+        TopReferrer(id: '5', name: '', referrals: 1, rank: 5), // empty name edge case
       ],
     );
 
-    await tester.pumpWidget(createWidget(container));
+    await tester.pumpWidget(createWidgetUnderTest());
     await tester.pumpAndSettle();
 
-    expect(find.byType(SnackBar), findsOneWidget);
-    expect(find.textContaining('API Error'), findsOneWidget);
+    expect(find.text('User 1'), findsOneWidget);
+    expect(find.text('User 2'), findsOneWidget);
+    expect(find.text('User 3'), findsOneWidget);
+    expect(find.text('User 4'), findsOneWidget);
+    expect(find.text('?'), findsOneWidget); // Empty name fallback
+    expect(find.text('#4'), findsOneWidget);
+
+    // Tap View All
+    await tester.tap(find.text('View All'));
+    await tester.pumpAndSettle();
+    expect(find.text('Leaderboard Page'), findsOneWidget);
+  });
+
+  testWidgets('pull to refresh calls fetchReferralData', (WidgetTester tester) async {
+    mockNotifier.state = ReferralState(
+      isLoading: false,
+      stats: const ReferralStats(referralCode: 'CODE', milestones: []),
+    );
+
+    await tester.pumpWidget(createWidgetUnderTest());
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.text('CODE'), const Offset(0, 500));
+    await tester.pumpAndSettle();
+
+    verify(() => mockNotifier.fetchReferralData()).called(greaterThanOrEqualTo(1));
+  });
+
+  testWidgets('copy code puts code in clipboard and shows snackbar', (WidgetTester tester) async {
+    mockNotifier.state = ReferralState(
+      isLoading: false,
+      stats: const ReferralStats(referralCode: 'CODE123', milestones: []),
+    );
+
+    await tester.pumpWidget(createWidgetUnderTest());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.copy));
+    await tester.pump();
+
+    final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
+    expect(clipboardData?.text, 'CODE123');
+    
+    await tester.pumpAndSettle();
+    expect(find.text('Code "CODE123" copied!'), findsOneWidget);
+  });
+
+  testWidgets('share invite captures screenshot and shares', (WidgetTester tester) async {
+    mockNotifier.state = ReferralState(
+      isLoading: false,
+      stats: const ReferralStats(referralCode: 'CODE123', milestones: []),
+    );
+
+    await tester.pumpWidget(createWidgetUnderTest());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Invite Friends'));
+    await tester.pump();
+
+    expect(find.text('Generating invite card...'), findsOneWidget);
+    await tester.pumpAndSettle();
   });
 }
