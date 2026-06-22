@@ -1,4 +1,11 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 
-bool get isAndroid => Platform.isAndroid;
-bool get isIOS => Platform.isIOS;
+@visibleForTesting
+bool? debugMockIsAndroid;
+
+@visibleForTesting
+bool? debugMockIsIOS;
+
+bool get isAndroid => debugMockIsAndroid ?? Platform.isAndroid;
+bool get isIOS => debugMockIsIOS ?? Platform.isIOS;

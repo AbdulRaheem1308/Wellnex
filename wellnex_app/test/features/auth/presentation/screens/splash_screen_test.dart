@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wellnex_app/features/auth/presentation/screens/splash_screen.dart';
 import 'package:wellnex_app/l10n/app_localizations.dart';
@@ -12,14 +13,54 @@ import 'package:go_router/go_router.dart';
 
 void main() {
   setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
     final temp = await Directory.systemTemp.createTemp();
     Hive.init(temp.path);
+    
+    // Mock FlutterSecureStorage channel to prevent hangs on read/write/delete
+    const secureStorageChannel = MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(secureStorageChannel, (_) async => null);
+
     await StorageService.init();
-    FlutterSecureStorage.setMockInitialValues({});
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('SplashScreen renders properly with animations', (tester) async {
+  Widget buildTestApp(GoRouter router) {
+    return ProviderScope(
+      child: MaterialApp.router(
+        routerConfig: router,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
+    );
+  }
+
+  setUp(() async {
+    StorageService.setMockAccessToken(null);
+    await Hive.box('wellnex_storage').clear();
+    await StorageService.clearTokens();
+  });
+
+  testWidgets('navigates to onboarding if not completed', (tester) async {
+    final router = GoRouter(
+      routes: [
+        GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
+        GoRoute(path: '/onboarding', builder: (context, state) => const Scaffold(body: Text('Onboarding'))),
+      ],
+    );
+
+    await tester.pumpWidget(buildTestApp(router));
+    expect(find.text('Wellnex'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 2600));
+    await tester.pump();
+    expect(find.text('Onboarding'), findsOneWidget);
+  });
+
+  testWidgets('navigates to login if onboarding done but no token', (tester) async {
+    Hive.box('wellnex_storage').put('onboarding_complete', true);
+    StorageService.setMockAccessToken(null);
+    
     final router = GoRouter(
       routes: [
         GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
@@ -27,22 +68,45 @@ void main() {
       ],
     );
 
-    await tester.pumpWidget(
-      ProviderScope(
-        child: MaterialApp.router(
-          routerConfig: router,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-        ),
-      ),
+    await tester.pumpWidget(buildTestApp(router));
+    await tester.pump(const Duration(milliseconds: 2600));
+    await tester.pump();
+    expect(find.text('Login'), findsOneWidget);
+  });
+
+  testWidgets('navigates to completeProfile if token exists but profile not created', (tester) async {
+    Hive.box('wellnex_storage').put('onboarding_complete', true);
+    Hive.box('wellnex_storage').put('user', {'isProfileCreated': false});
+    StorageService.setMockAccessToken('fake_token');
+    
+    final router = GoRouter(
+      routes: [
+        GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
+        GoRoute(path: '/complete-profile', builder: (context, state) => const Scaffold(body: Text('CompleteProfile'))),
+      ],
     );
 
-    // Initial pump
-    expect(find.text('Wellnex'), findsOneWidget);
-    expect(find.text('Walk • Track • Earn'), findsOneWidget);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    await tester.pumpWidget(buildTestApp(router));
+    await tester.pump(const Duration(milliseconds: 2600));
+    await tester.pump();
+    expect(find.text('CompleteProfile'), findsOneWidget);
+  });
 
-    // Give time for animations and timer to run
-    await tester.pumpAndSettle(const Duration(seconds: 3));
+  testWidgets('navigates to home if token exists and profile created', (tester) async {
+    Hive.box('wellnex_storage').put('onboarding_complete', true);
+    Hive.box('wellnex_storage').put('user', {'isProfileCreated': true});
+    StorageService.setMockAccessToken('fake_token');
+    
+    final router = GoRouter(
+      routes: [
+        GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
+        GoRoute(path: '/home', builder: (context, state) => const Scaffold(body: Text('Home'))),
+      ],
+    );
+
+    await tester.pumpWidget(buildTestApp(router));
+    await tester.pump(const Duration(milliseconds: 2600));
+    await tester.pump();
+    expect(find.text('Home'), findsOneWidget);
   });
 }

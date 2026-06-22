@@ -1,4 +1,10 @@
 import 'package:flutter/foundation.dart';
 
-bool get isAndroid => defaultTargetPlatform == TargetPlatform.android;
-bool get isIOS => defaultTargetPlatform == TargetPlatform.iOS;
+@visibleForTesting
+bool? debugMockIsAndroid;
+
+@visibleForTesting
+bool? debugMockIsIOS;
+
+bool get isAndroid => debugMockIsAndroid ?? false;
+bool get isIOS => debugMockIsIOS ?? false;

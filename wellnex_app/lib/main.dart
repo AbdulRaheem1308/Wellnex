@@ -23,10 +23,14 @@ import 'package:safe_device/safe_device.dart';
 import 'package:flutter/foundation.dart';
 import 'package:posthog_flutter/posthog_flutter.dart';
 
+@visibleForTesting
+bool debugMockCriticalError = false;
+
 void main() {
   runZonedGuarded(() async {
     try {
       WidgetsFlutterBinding.ensureInitialized();
+      if (debugMockCriticalError) throw Exception("Simulated Critical Error");
       
       // Strip debugPrint logs in production for security and performance
       if (kReleaseMode) {

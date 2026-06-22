@@ -64,6 +64,11 @@ class StorageService {
         key: AppConstants.refreshTokenKey, value: refreshToken);
   }
 
+  @visibleForTesting
+  static void setMockAccessToken(String? token) {
+    _cachedAccessToken = token;
+  }
+
   /// Returns the stored access token, or `null` if none exists.
   static Future<String?> getAccessToken() async {
     if (_cachedAccessToken != null) return _cachedAccessToken;
@@ -128,7 +133,7 @@ class StorageService {
 
   // ── Hive Storage ───────────────────────────────────────────────────────────
 
-  /// Saves the user object in Hive.
+  // User Management
   static Future<void> saveUser(Map<String, dynamic> user) async {
     await _openBox.put(AppConstants.userKey, user);
   }
