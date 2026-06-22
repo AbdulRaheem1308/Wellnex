@@ -37,6 +37,10 @@ void main() {
   }
 
   setUp(() async {
+    const secureStorageChannel = MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(secureStorageChannel, (_) async => null);
+
     StorageService.setMockAccessToken(null);
     await Hive.box('wellnex_storage').clear();
     await StorageService.clearTokens();
@@ -75,9 +79,11 @@ void main() {
   });
 
   testWidgets('navigates to completeProfile if token exists but profile not created', (tester) async {
+    print('Starting test 3');
     Hive.box('wellnex_storage').put('onboarding_complete', true);
-    Hive.box('wellnex_storage').put('user', {'isProfileCreated': false});
+    Hive.box('wellnex_storage').put('user_data', {'isProfileCreated': false});
     StorageService.setMockAccessToken('fake_token');
+    print('Set up complete');
     
     final router = GoRouter(
       routes: [
@@ -86,15 +92,20 @@ void main() {
       ],
     );
 
+    print('Pumping widget');
     await tester.pumpWidget(buildTestApp(router));
+    print('Pumping time 2600ms');
     await tester.pump(const Duration(milliseconds: 2600));
+    print('Pumping again');
     await tester.pump();
+    print('Checking expectation');
     expect(find.text('CompleteProfile'), findsOneWidget);
+    print('Done test 3');
   });
 
   testWidgets('navigates to home if token exists and profile created', (tester) async {
     Hive.box('wellnex_storage').put('onboarding_complete', true);
-    Hive.box('wellnex_storage').put('user', {'isProfileCreated': true});
+    Hive.box('wellnex_storage').put('user_data', {'isProfileCreated': true});
     StorageService.setMockAccessToken('fake_token');
     
     final router = GoRouter(
