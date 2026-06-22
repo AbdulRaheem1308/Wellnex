@@ -207,8 +207,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ),
                           validator: (v) {
-                            if (v == null || v.isEmpty) return 'Required';
-                            if (!v.contains('@')) return 'Invalid email';
+                            if (v == null || v.trim().isEmpty) {
+                              return 'Email address is required';
+                            }
+                            // Email validation regex
+                            final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                            if (!emailRegex.hasMatch(v.trim())) {
+                              return 'Please enter a valid email address';
+                            }
                             return null;
                           },
                         ),
@@ -276,7 +282,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                 ],
                 
-                const SizedBox(height: 32),
+                const Spacer(),
+                const SizedBox(height: 12),
                 
                 Text(
                   AppLocalizations.of(context)?.termsAndPrivacy ?? 'By continuing, you agree to our Terms & Privacy Policy',

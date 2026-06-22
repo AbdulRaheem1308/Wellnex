@@ -27,6 +27,25 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
   final _weightController = TextEditingController(text: '70');
   final _heightController = TextEditingController(text: '170');
   
+  String _gender = 'Male';
+  
+  double get _bmi {
+    final w = double.tryParse(_weightController.text) ?? 0;
+    final hCm = double.tryParse(_heightController.text) ?? 0;
+    if (w <= 0 || hCm <= 0) return 0;
+    final hM = hCm / 100;
+    return w / (hM * hM);
+  }
+
+  String get _bmiCategory {
+    final bmi = _bmi;
+    if (bmi == 0) return '';
+    if (bmi < 18.5) return 'Underweight';
+    if (bmi < 25) return 'Normal';
+    if (bmi < 30) return 'Overweight';
+    return 'Obese';
+  }
+  
   bool _isEmailReadOnly = false;
   
   double _stepGoal = 5000;
@@ -86,6 +105,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
       if (user['age'] != null) _ageController.text = user['age'].toString();
       if (user['weightKg'] != null) _weightController.text = user['weightKg'].toString();
       if (user['heightCm'] != null) _heightController.text = user['heightCm'].toString();
+      if (user['gender'] != null) _gender = user['gender'] as String;
     }
   }
 
@@ -123,6 +143,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
         'name': _nameController.text.trim(),
         'phone': phoneVal,
         'email': _emailController.text.trim(),
+        'gender': _gender,
         'heightCm': height,
         'weightKg': weight,
         'age': age,
@@ -196,7 +217,19 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                         controller: _nameController,
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         decoration: _buildInputDecoration(l10n?.nameHint ?? 'e.g. Alex Step', Icons.person_outline),
-                        validator: (v) => v == null || v.length < 2 ? (l10n?.nameTooShort ?? 'Name must be at least 2 chars') : null,
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) {
+                            return l10n?.fieldRequired ?? 'Name is required';
+                          }
+                          if (v.trim().length < 2) {
+                            return l10n?.nameTooShort ?? 'Name must be at least 2 chars';
+                          }
+                          final nameRegex = RegExp(r"^[a-zA-Z\s\-\']+$");
+                          if (!nameRegex.hasMatch(v.trim())) {
+                            return 'Please enter a valid name (letters only)';
+                          }
+                          return null;
+                        },
                       )).animate(delay: 100.ms).fadeIn(),
                       
                       const SizedBox(height: 24),
@@ -214,11 +247,16 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                                   child: TextFormField(
                                   controller: _emailController,
                                   readOnly: _isEmailReadOnly,
-                                  style: TextStyle(color: _isEmailReadOnly ? AppTheme.neutral500 : AppTheme.neutral900),
+                                  style: TextStyle(color: _isEmailReadOnly ? AppTheme.neutral500 : Theme.of(context).textTheme.bodyLarge?.color),
                                   decoration: _buildInputDecoration(l10n?.emailHint ?? 'email@example.com', Icons.email_outlined, isReadOnly: _isEmailReadOnly),
                                   validator: (v) {
-                                    if (v == null || v.isEmpty) return l10n?.fieldRequired ?? 'Required';
-                                    if (!v.contains('@')) return l10n?.invalidEmail ?? 'Invalid email';
+                                    if (v == null || v.trim().isEmpty) {
+                                      return l10n?.fieldRequired ?? 'Email is required';
+                                    }
+                                    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                                    if (!emailRegex.hasMatch(v.trim())) {
+                                      return l10n?.invalidEmail ?? 'Please enter a valid email address';
+                                    }
                                     return null;
                                   },
                                 )),
@@ -240,10 +278,10 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                                   child: TextFormField(
                                   controller: _phoneController,
                                   keyboardType: TextInputType.phone,
-                                  style: const TextStyle(color: AppTheme.neutral900),
+                                  style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
                                   decoration: _buildInputDecoration('+91 98765 43210', Icons.phone_outlined),
                                   validator: (v) {
-                                    if (v == null || v.isEmpty) return l10n?.fieldRequired ?? 'Required';
+                                    if (v == null || v.trim().isEmpty) return l10n?.fieldRequired ?? 'Phone number is required';
                                     final phoneStr = v.replaceAll(RegExp(r'\s+'), '');
                                     final phoneRegex = RegExp(r'^(?:\+91|91)?[6-9]\d{9}$');
                                     if (!phoneRegex.hasMatch(phoneStr)) {
@@ -260,9 +298,33 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
 
                       const SizedBox(height: 24),
 
-                      // 2. Physical Stats (Row)
+                      // 2. Personal & Physical Stats
                       Row(
                         children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildLabel('Gender'),
+                                DropdownButtonFormField<String>(
+                                  value: _gender,
+                                  decoration: _buildInputDecoration('Gender', null),
+                                  items: ['Male', 'Female', 'Other'].map((String value) {
+                                    return DropdownMenuItem<String>(
+                                      value: value,
+                                      child: Text(value),
+                                    );
+                                  }).toList(),
+                                  onChanged: (newValue) {
+                                    if (newValue != null) {
+                                      setState(() => _gender = newValue);
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 16),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -274,12 +336,24 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                                   controller: _ageController,
                                   keyboardType: TextInputType.number,
                                   decoration: _buildInputDecoration('25', null),
-                                  validator: (v) => v!.isEmpty ? (l10n?.fieldRequired ?? 'Required') : null,
+                                  validator: (v) {
+                                    if (v == null || v.trim().isEmpty) return l10n?.fieldRequired ?? 'Required';
+                                    final age = int.tryParse(v.trim());
+                                    if (age == null) return 'Must be a number';
+                                    if (age < 10 || age > 120) return 'Invalid age (10-120)';
+                                    return null;
+                                  },
                                 )),
                               ],
                             ),
                           ),
-                          const SizedBox(width: 16),
+                        ],
+                      ).animate(delay: 200.ms).fadeIn(),
+
+                      const SizedBox(height: 16),
+
+                      Row(
+                        children: [
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -291,7 +365,14 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                                   controller: _weightController,
                                   keyboardType: TextInputType.number,
                                   decoration: _buildInputDecoration('70', null),
-                                  validator: (v) => v!.isEmpty ? (l10n?.fieldRequired ?? 'Required') : null,
+                                  onChanged: (_) => setState(() {}),
+                                  validator: (v) {
+                                    if (v == null || v.trim().isEmpty) return l10n?.fieldRequired ?? 'Required';
+                                    final weight = double.tryParse(v.trim());
+                                    if (weight == null) return 'Must be a number';
+                                    if (weight < 20 || weight > 300) return 'Invalid weight (20-300 kg)';
+                                    return null;
+                                  },
                                 )),
                               ],
                             ),
@@ -308,13 +389,46 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                                   controller: _heightController,
                                   keyboardType: TextInputType.number,
                                   decoration: _buildInputDecoration('170', null),
-                                  validator: (v) => v!.isEmpty ? (l10n?.fieldRequired ?? 'Required') : null,
+                                  onChanged: (_) => setState(() {}),
+                                  validator: (v) {
+                                    if (v == null || v.trim().isEmpty) return l10n?.fieldRequired ?? 'Required';
+                                    final height = double.tryParse(v.trim());
+                                    if (height == null) return 'Must be a number';
+                                    if (height < 50 || height > 250) return 'Invalid height (50-250 cm)';
+                                    return null;
+                                  },
                                 )),
                               ],
                             ),
                           ),
                         ],
-                      ).animate(delay: 200.ms).fadeIn(),
+                      ).animate(delay: 250.ms).fadeIn(),
+                      
+                      const SizedBox(height: 16),
+                      
+                      if (_bmi > 0)
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryGreen.withAlpha(20),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppTheme.primaryGreen.withAlpha(50)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('BMI: ${_bmi.toStringAsFixed(1)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryGreen,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(_bmiCategory, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                              ),
+                            ],
+                          ),
+                        ).animate().fadeIn(),
 
                       const SizedBox(height: 24),
                       

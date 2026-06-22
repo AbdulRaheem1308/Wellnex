@@ -24,6 +24,25 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late TextEditingController _weightController;
   late TextEditingController _heightController;
   
+  String _gender = 'Male';
+  
+  double get _bmi {
+    final w = double.tryParse(_weightController.text) ?? 0;
+    final hCm = double.tryParse(_heightController.text) ?? 0;
+    if (w <= 0 || hCm <= 0) return 0;
+    final hM = hCm / 100;
+    return w / (hM * hM);
+  }
+
+  String get _bmiCategory {
+    final bmi = _bmi;
+    if (bmi == 0) return '';
+    if (bmi < 18.5) return 'Underweight';
+    if (bmi < 25) return 'Normal';
+    if (bmi < 30) return 'Overweight';
+    return 'Obese';
+  }
+  
   double _stepGoal = 5000;
   int _selectedAvatarIndex = 0;
   
@@ -85,6 +104,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       if (user['age'] != null) _ageController.text = user['age'].toString();
       if (user['weightKg'] != null) _weightController.text = user['weightKg'].toString();
       if (user['heightCm'] != null) _heightController.text = user['heightCm'].toString();
+      if (user['gender'] != null) _gender = user['gender'] as String;
     }
   }
 
@@ -125,6 +145,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         'name': _nameController.text.trim(),
         'phone': _phoneController.text.trim(),
         'email': _emailController.text.trim(),
+        'gender': _gender,
         'heightCm': height,
         'weightKg': weight,
         'age': age,
@@ -168,9 +189,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         ? const Center(child: CircularProgressIndicator())
         : Form(
             key: _formKey,
-            child: ListView(
-              padding: const EdgeInsets.all(24),
-              children: [
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + MediaQuery.paddingOf(context).bottom),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
                 // Avatar Selection
                 Semantics(
                   header: true,
@@ -217,7 +240,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   label: 'Full Name',
                   controller: _nameController,
                   icon: Icons.person_outline,
-                  validator: (v) => v?.isEmpty == true ? 'Name is required' : null,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Name is required';
+                    if (v.trim().length < 2) return 'Name must be at least 2 chars';
+                    if (!RegExp(r"^[a-zA-Z\s\-\']+$").hasMatch(v.trim())) return 'Please enter a valid name';
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 16),
                 
@@ -228,6 +256,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   controller: _emailController,
                   icon: Icons.email_outlined,
                   keyboardType: TextInputType.emailAddress,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Email is required';
+                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v.trim())) return 'Please enter a valid email address';
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 16),
                 
@@ -238,8 +271,46 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   controller: _phoneController,
                   icon: Icons.phone_outlined,
                   keyboardType: TextInputType.phone,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Phone is required';
+                    final phoneStr = v.replaceAll(RegExp(r'\s+'), '');
+                    if (!RegExp(r'^(?:\+91|91)?[6-9]\d{9}$').hasMatch(phoneStr)) return 'Please enter a valid Indian mobile number';
+                    return null;
+                  },
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
+                
+                // Gender
+                DropdownButtonFormField<String>(
+                  value: _gender,
+                  decoration: InputDecoration(
+                    labelText: 'Gender',
+                    labelStyle: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.7)),
+                    prefixIcon: Icon(Icons.people_outline, color: Theme.of(context).iconTheme.color?.withValues(alpha: 0.5)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Theme.of(context).dividerColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Theme.of(context).dividerColor),
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(context).colorScheme.surface,
+                  ),
+                  items: ['Male', 'Female', 'Other'].map((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
+                    );
+                  }).toList(),
+                  onChanged: (newValue) {
+                    if (newValue != null) {
+                      setState(() => _gender = newValue);
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
                 
                 // Age
                 _buildTextField(
@@ -248,6 +319,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   controller: _ageController,
                   keyboardType: TextInputType.number,
                   icon: Icons.cake_outlined,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Age is required';
+                    final age = int.tryParse(v.trim());
+                    if (age == null || age < 10 || age > 120) return 'Invalid age (10-120)';
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 16),
                 
@@ -258,6 +335,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   controller: _weightController,
                   keyboardType: TextInputType.number,
                   icon: Icons.monitor_weight_outlined,
+                  onChanged: (_) => setState(() {}),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Weight is required';
+                    final w = double.tryParse(v.trim());
+                    if (w == null || w < 20 || w > 300) return 'Invalid weight (20-300 kg)';
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 16),
                 
@@ -268,7 +352,40 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   controller: _heightController,
                   keyboardType: TextInputType.number,
                   icon: Icons.height,
+                  onChanged: (_) => setState(() {}),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Height is required';
+                    final h = double.tryParse(v.trim());
+                    if (h == null || h < 50 || h > 250) return 'Invalid height (50-250 cm)';
+                    return null;
+                  },
                 ),
+                const SizedBox(height: 16),
+                
+                // BMI Display
+                if (_bmi > 0)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryGreen.withAlpha(20),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppTheme.primaryGreen.withAlpha(50)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('BMI: ${_bmi.toStringAsFixed(1)}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).textTheme.bodyLarge?.color)),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryGreen,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(_bmiCategory, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                        ),
+                      ],
+                    ),
+                  ),
                 const SizedBox(height: 24),
                 
                 // Step Goal
@@ -310,7 +427,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     child: const Text('Save Changes', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 ),
-              ],
+                ],
+              ),
             ),
           ),
     );
@@ -324,6 +442,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
     bool readOnly = false,
+    void Function(String)? onChanged,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
@@ -332,6 +451,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       readOnly: readOnly,
       keyboardType: keyboardType,
       validator: validator,
+      onChanged: onChanged,
       style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
       decoration: InputDecoration(
         labelText: label,
