@@ -179,7 +179,7 @@ class _TeamsScreenState extends ConsumerState<TeamsScreen>
                           return TeamCard(
                             team: team,
                             showJoinButton: true,
-                            onJoin: () => _joinTeam(team),
+                            onJoin: () => joinTeam(team),
                             onTap: () => context.push('/teams/${team.id}'),
                           ).animate(delay: (index * 50).ms)
                               .fadeIn(duration: 300.ms)
@@ -221,7 +221,8 @@ class _TeamsScreenState extends ConsumerState<TeamsScreen>
     );
   }
 
-  Future<void> _joinTeam(Team team) async {
+  @visibleForTesting
+  Future<void> joinTeam(Team team) async {
     if (team.isFull) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('This team is full!')),
