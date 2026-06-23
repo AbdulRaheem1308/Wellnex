@@ -156,12 +156,37 @@ class StorageService {
     final keysToKeep = [
       AppConstants.onboardingCompleteKey,
       AppConstants.themeKey,
+      // Keep the logout timestamp so the login screen can enforce the cooldown.
+      AppConstants.logoutTimestampKey,
     ];
-    
+
     final keysToDelete = _openBox.keys.where((k) => !keysToKeep.contains(k)).toList();
     for (var key in keysToDelete) {
       await _openBox.delete(key);
     }
+  }
+
+  // ── Logout Cooldown ────────────────────────────────────────────────────────
+
+  /// Saves the current UTC timestamp (milliseconds since epoch) as the
+  /// moment the user logged out. Used to enforce a login cooldown period.
+  static Future<void> saveLogoutTimestamp() async {
+    await _openBox.put(
+      AppConstants.logoutTimestampKey,
+      DateTime.now().millisecondsSinceEpoch,
+    );
+  }
+
+  /// Returns the number of seconds remaining in the post-logout cooldown,
+  /// or `0` if the cooldown has already elapsed or no logout was recorded.
+  static int loginCooldownSecondsRemaining() {
+    final ts = _openBox.get(AppConstants.logoutTimestampKey);
+    if (ts == null) return 0;
+    final elapsed = DateTime.now()
+        .difference(DateTime.fromMillisecondsSinceEpoch(ts as int))
+        .inSeconds;
+    final remaining = AppConstants.loginCooldownSeconds - elapsed;
+    return remaining > 0 ? remaining : 0;
   }
 
   // ── Onboarding ─────────────────────────────────────────────────────────────

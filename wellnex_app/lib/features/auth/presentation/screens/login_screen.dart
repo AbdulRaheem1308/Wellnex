@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart'; 
 import 'dart:io';
+import 'dart:async';
 import 'package:wellnex_app/l10n/app_localizations.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../services/storage_service.dart';
 import '../providers/auth_provider.dart';
 import '../../services/social_auth_service.dart';
 
@@ -21,13 +23,76 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
-  
+
   bool _isLoading = false;
+
+  /// Seconds remaining in the post-logout cooldown (0 = no cooldown active).
+  int _cooldownRemaining = 0;
+  Timer? _cooldownTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLoginCooldown();
+  }
 
   @override
   void dispose() {
+    _cooldownTimer?.cancel();
     _emailController.dispose();
     super.dispose();
+  }
+
+  /// Checks whether a post-logout cooldown is still active and, if so,
+  /// shows a SnackBar and starts a countdown timer.
+  void _checkLoginCooldown() {
+    final remaining = StorageService.loginCooldownSecondsRemaining();
+    if (remaining <= 0) return;
+
+    setState(() => _cooldownRemaining = remaining);
+
+    // Show the initial snackbar after the first frame so the Scaffold is ready.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _showCooldownSnackBar(_cooldownRemaining);
+    });
+
+    _startCooldownTimer();
+  }
+
+  void _startCooldownTimer() {
+    _cooldownTimer?.cancel();
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      final remaining = StorageService.loginCooldownSecondsRemaining();
+      setState(() => _cooldownRemaining = remaining);
+
+      if (remaining <= 0) {
+        timer.cancel();
+        // Dismiss any lingering snackbar when cooldown ends.
+        if (mounted) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        }
+      } else {
+        if (mounted) _showCooldownSnackBar(remaining);
+      }
+    });
+  }
+
+  void _showCooldownSnackBar(int secondsLeft) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please wait ${secondsLeft}s before logging in again.',
+          ),
+          duration: const Duration(seconds: 2),
+          backgroundColor: AppTheme.error,
+        ),
+      );
   }
 
   Future<void> _handleSendOtp() async {
@@ -224,7 +289,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: _isLoading ? null : _handleSendOtp,
+                            onPressed: (_isLoading || _cooldownRemaining > 0) ? null : _handleSendOtp,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppTheme.primaryGreen,
                               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -234,7 +299,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                             child: _isLoading
                                 ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                                : const Text('Continue', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                                : _cooldownRemaining > 0
+                                    ? Text('Wait ${_cooldownRemaining}s', style: const TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.bold))
+                                    : const Text('Continue', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                           ),
                         ),
                       ],
@@ -257,8 +324,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 
                 const SizedBox(height: 24),
                 
-                if (_isLoading)
-                  const Center(child: CircularProgressIndicator(color: Colors.white))
+                if (_isLoading || _cooldownRemaining > 0)
+                  Center(
+                    child: _isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const SizedBox.shrink(),
+                  )
                 else ...[
                   // Google Button
                   _SocialButton(

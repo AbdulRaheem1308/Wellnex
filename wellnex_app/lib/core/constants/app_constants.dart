@@ -18,6 +18,10 @@ class AppConstants {
   static const String onboardingCompleteKey = 'onboarding_complete';
   static const String themeKey = 'theme_mode';
   static const String deviceUuidKey = 'device_uuid';
+  static const String logoutTimestampKey = 'logout_timestamp';
+
+  // Login cooldown after logout (seconds)
+  static const int loginCooldownSeconds = 20;
 
   // Step Tracking
   static const int defaultDailyGoal = 10000;

@@ -205,6 +205,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     _pushService.clearTokenOnLogout().ignore();
 
     await StorageService.clearTokens();
+    // Record when the user logged out so the login screen can enforce a
+    // cooldown period before allowing a new login attempt.
+    await StorageService.saveLogoutTimestamp();
     await StorageService.clearSessionData();
     
     state = AuthState();
