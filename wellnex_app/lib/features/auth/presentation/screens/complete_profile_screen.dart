@@ -585,14 +585,42 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
 
   InputDecoration _buildInputDecoration(String hint, IconData? icon, {bool isReadOnly = false}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final normalBorderColor = isDark ? AppTheme.neutral700 : AppTheme.neutral200;
     return InputDecoration(
       hintText: hint,
       prefixIcon: icon != null ? Icon(icon, size: 20) : null,
       contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
       filled: true,
-      fillColor: isReadOnly 
+      fillColor: isReadOnly
           ? (isDark ? AppTheme.neutral900 : AppTheme.neutral100)
           : (isDark ? AppTheme.neutral800 : AppTheme.neutral50),
+      // Normal border
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: normalBorderColor),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: normalBorderColor),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppTheme.primaryGreen, width: 2),
+      ),
+      // Error borders — these make validation errors visible
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppTheme.error, width: 1.5),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppTheme.error, width: 2),
+      ),
+      errorStyle: const TextStyle(
+        color: AppTheme.error,
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+      ),
     );
   }
 }
