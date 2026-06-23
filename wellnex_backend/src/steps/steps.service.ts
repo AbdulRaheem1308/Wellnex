@@ -358,7 +358,7 @@ export class StepsService {
       );
     }
 
-    this.validateStepCountLimits(userId, dto.stepCount);
+    await this.validateStepCountLimits(userId, dto.stepCount);
 
     if (dto.nonce) {
       const isUnique = await this.redisService.setNonce(dto.nonce, 86400);
@@ -383,7 +383,7 @@ export class StepsService {
     this.validateIntegrity(userId, dto.integrity);
   }
 
-  private validateStepCountLimits(userId: string, stepCount: number) {
+  private async validateStepCountLimits(userId: string, stepCount: number) {
     if (stepCount < 0) {
       throw new BadRequestException("Step count cannot be negative.");
     }
@@ -399,6 +399,17 @@ export class StepsService {
       this.logger.warn(
         `⚠️ SUSPICIOUS: User ${userId} reported ${stepCount} steps. Flagged.`,
       );
+      // Fire and forget so we don't block sync unnecessarily, but catch errors
+      this.prisma.anomaly.create({
+        data: {
+          userId,
+          type: 'SYSTEM_FLAG',
+          severity: 'HIGH',
+          description: `Suspiciously high step count reported: ${stepCount} steps in a single sync window.`,
+          metadata: { stepCount },
+          status: 'PENDING',
+        }
+      }).catch(err => this.logger.error('Failed to log anomaly', err));
     }
   }
 

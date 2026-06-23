@@ -23,6 +23,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
     { id: "offers", label: "Offers", icon: Tag },
     { id: "economy", label: "Economy", icon: DollarSign },
     { id: "activity", label: "Anti-Cheat Logs", icon: AlertTriangle },
+    { id: "anomalies", label: "Anomalies", icon: AlertTriangle },
     { id: "messaging", label: "DM Compliance", icon: MessageSquareOff },
     { id: "analytics", label: "Interaction Tracking", icon: Activity }
   ];

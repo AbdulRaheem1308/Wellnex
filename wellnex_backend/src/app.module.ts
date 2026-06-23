@@ -30,6 +30,7 @@ import { MessagingModule } from "./messaging/messaging.module";
 import { AnalyticsModule } from "./analytics/analytics.module";
 
 import { ActivitiesModule } from "./activities/activities.module";
+import { AnomaliesModule } from "./anomalies/anomalies.module";
 
 // Controllers
 import { HealthController } from "./health.controller";
@@ -123,6 +124,7 @@ import { SentryModule } from "@sentry/nestjs/setup";
     AnalyticsModule,
 
     ActivitiesModule,
+    AnomaliesModule,
   ],
   controllers: [HealthController],
   providers: [

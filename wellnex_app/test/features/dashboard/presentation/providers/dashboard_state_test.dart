@@ -436,14 +436,6 @@ void main() {
       expect(state.sensorStepsToday, 0);
     });
 
-    test('sensorOffset defaults to 0', () {
-      expect(state.sensorOffset, 0);
-    });
-
-    test('isSensorListening defaults to false', () {
-      expect(state.isSensorListening, isFalse);
-    });
-
     test('healthAuthorized defaults to false', () {
       expect(state.healthAuthorized, isFalse);
     });
@@ -492,8 +484,6 @@ void main() {
         syncStatus: SyncStatus.synced,
         lastSyncTime: now,
         sensorStepsToday: 3500,
-        sensorOffset: 500,
-        isSensorListening: true,
         healthAuthorized: true,
         sensorErrorMessage: null,
         firstTrackingTime: now,
@@ -517,8 +507,6 @@ void main() {
       expect(copy.syncStatus, base.syncStatus);
       expect(copy.lastSyncTime, base.lastSyncTime);
       expect(copy.sensorStepsToday, base.sensorStepsToday);
-      expect(copy.sensorOffset, base.sensorOffset);
-      expect(copy.isSensorListening, base.isSensorListening);
       expect(copy.healthAuthorized, base.healthAuthorized);
       expect(copy.firstTrackingTime, base.firstTrackingTime);
       expect(copy.lastTrackingTime, base.lastTrackingTime);
@@ -547,15 +535,9 @@ void main() {
       expect(copy.xpToNextLevel, base.xpToNextLevel);
     });
 
-    test('overrides sensorStepsToday and sensorOffset', () {
-      final copy = base.copyWith(sensorStepsToday: 6000, sensorOffset: 1000);
+    test('overrides sensorStepsToday', () {
+      final copy = base.copyWith(sensorStepsToday: 6000);
       expect(copy.sensorStepsToday, 6000);
-      expect(copy.sensorOffset, 1000);
-    });
-
-    test('overrides isSensorListening to false', () {
-      final copy = base.copyWith(isSensorListening: false);
-      expect(copy.isSensorListening, isFalse);
     });
 
     test('overrides healthAuthorized', () {

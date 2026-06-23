@@ -20,6 +20,7 @@ import { EconomyView } from "./views/EconomyView";
 import { ActivityView } from "./views/ActivityView";
 import { CorporateView } from "./views/CorporateView";
 import { MessagingView } from "./views/MessagingView";
+import { AnomaliesView } from "./views/AnomaliesView";
 
 // API
 import { getApiKey, setApiKey, clearApiKey, apiFetch } from "./services/api";
@@ -132,6 +133,8 @@ export default function App() {
   const [steps, setSteps] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
   const [conversations, setConversations] = useState<any[]>([]);
+  const [anomalies, setAnomalies] = useState<any[]>([]);
+  const [anomaliesStatusFilter, setAnomaliesStatusFilter] = useState<string>("");
 
   // Search & Profile Inspectors
   const [userSearch, setUserSearch] = useState<string>("");
@@ -195,6 +198,15 @@ export default function App() {
     fetchActivity();
     fetchCorporate();
     fetchMessaging();
+    fetchAnomalies();
+  };
+
+  const fetchAnomalies = () => {
+    let url = "/anomalies?limit=50";
+    if (anomaliesStatusFilter) url += `&status=${anomaliesStatusFilter}`;
+    apiFetch(url)
+      .then(d => { if (d.success) setAnomalies(d.data); })
+      .catch(() => {});
   };
 
   const fetchSummary = () => {
@@ -284,6 +296,10 @@ export default function App() {
       fetchUsers();
     }
   }, [userSearch]);
+
+  useEffect(() => {
+    if (isAuthenticated) fetchAnomalies();
+  }, [anomaliesStatusFilter]);
 
   const handleSelectUser = async (userId: string) => {
     try {
@@ -580,6 +596,17 @@ export default function App() {
     } catch (err) {}
   };
 
+  const handleUpdateAnomalyStatus = async (id: string, status: string) => {
+    try {
+      await apiFetch(`/anomalies/${id}/status`, { 
+        method: "PATCH", 
+        body: JSON.stringify({ status }) 
+      });
+      showToast("Anomaly status updated.");
+      fetchAnomalies();
+    } catch (err) {}
+  };
+
   // Dialog triggers
   const openModal = (type: "challenge" | "achievement" | "reward" | "quest" | "stage", item: any = null, questId: string = "") => {
     setModalType(type);
@@ -749,6 +776,15 @@ export default function App() {
 
           {activeTab === "messaging" && (
             <MessagingView conversations={conversations} onDeleteConversation={handleDeleteConversation} />
+          )}
+
+          {activeTab === "anomalies" && (
+            <AnomaliesView 
+              anomalies={anomalies} 
+              onUpdateStatus={handleUpdateAnomalyStatus}
+              statusFilter={anomaliesStatusFilter}
+              setStatusFilter={setAnomaliesStatusFilter}
+            />
           )}
         </div>
       </main>

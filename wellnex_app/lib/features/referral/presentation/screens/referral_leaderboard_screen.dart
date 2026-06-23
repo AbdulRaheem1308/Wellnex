@@ -54,11 +54,9 @@ class _ReferralLeaderboardScreenState extends ConsumerState<ReferralLeaderboardS
               _buildUserStats(context, state.stats),
               
               Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                  ),
+                child: Material(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                   child: topReferrers.isEmpty 
                     ? _buildEmptyState()
                     : ListView.separated(

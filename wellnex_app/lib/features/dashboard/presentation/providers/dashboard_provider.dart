@@ -8,7 +8,6 @@ import 'dart:math';
 import '../../../../services/api_service.dart';
 import '../../../../services/storage_service.dart';
 import 'package:wellnex_app/services/health_service.dart';
-import 'package:wellnex_app/services/pedometer_service.dart';
 import 'package:wellnex_app/features/devices/presentation/providers/device_provider.dart';
 
 /// Dashboard state model
@@ -33,8 +32,6 @@ class DashboardState {
 
   // Diagnostics & Debugging Info
   final int sensorStepsToday;
-  final int sensorOffset;
-  final bool isSensorListening;
   final bool healthAuthorized;
   final String? sensorErrorMessage;
   // New timestamps for step tracking
@@ -56,8 +53,6 @@ class DashboardState {
     this.syncStatus = SyncStatus.idle,
     this.lastSyncTime,
     this.sensorStepsToday = 0,
-    this.sensorOffset = 0,
-    this.isSensorListening = false,
     this.healthAuthorized = false,
     this.sensorErrorMessage,
     this.firstTrackingTime,
@@ -79,8 +74,6 @@ class DashboardState {
     SyncStatus? syncStatus,
     DateTime? lastSyncTime,
     int? sensorStepsToday,
-    int? sensorOffset,
-    bool? isSensorListening,
     bool? healthAuthorized,
     String? sensorErrorMessage,
     DateTime? firstTrackingTime,
@@ -101,8 +94,6 @@ class DashboardState {
       syncStatus: syncStatus ?? this.syncStatus,
       lastSyncTime: lastSyncTime ?? this.lastSyncTime,
       sensorStepsToday: sensorStepsToday ?? this.sensorStepsToday,
-      sensorOffset: sensorOffset ?? this.sensorOffset,
-      isSensorListening: isSensorListening ?? this.isSensorListening,
       healthAuthorized: healthAuthorized ?? this.healthAuthorized,
       sensorErrorMessage: sensorErrorMessage ?? this.sensorErrorMessage,
       firstTrackingTime: firstTrackingTime ?? this.firstTrackingTime,
@@ -226,19 +217,14 @@ final dashboardProvider = StateNotifierProvider.autoDispose<DashboardNotifier, D
 class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindingObserver {
   final ApiService _apiService;
   final HealthService _healthService;
-  final PedometerService _pedometerService = PedometerService();
 
   int _lastSyncedSteps = 0;
   DateTime? _lastSyncedTime;
-  
-  int _currentPedometerSteps = 0;
-  int _lastPedometerRawSteps = 0;
-  int _pedometerOffset = 0;
-  bool _pedometerOffsetInitialized = false;
-  
-  // Real-time active minutes tracking
-  DateTime? _lastStepTime;
+
+  // Real-time active minutes tracking (estimated from Health API poll frequency)
   int _accumulatedActiveSeconds = 0;
+  int _lastHealthApiSteps = 0;
+  DateTime? _lastStepTime;
   
   String _trackingDate = DateTime.now().toIso8601String().split('T')[0];
   
@@ -246,7 +232,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
 
   DashboardNotifier(this._apiService, this._healthService) : super(DashboardState()) {
     _loadUser();
-    _initHardwarePedometer();
+    _initHealthPolling();
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -254,7 +240,6 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _uiBatchTimer?.cancel();
-    _pedometerService.stopListening();
     super.dispose();
   }
 
@@ -263,10 +248,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
     if (_trackingDate != todayStr) {
       debugPrint("DashboardNotifier: Midnight rollover detected. Resetting state for $todayStr");
       _trackingDate = todayStr;
-      _currentPedometerSteps = 0;
-      _pedometerOffset = 0;
-      _pedometerOffsetInitialized = false;
       _lastSyncedSteps = 0;
+      _lastHealthApiSteps = 0;
       _accumulatedActiveSeconds = 0;
       state = state.copyWith(
         todaySteps: null, // Clear yesterday's steps from UI
@@ -278,150 +261,63 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       debugPrint("DashboardNotifier: App resumed.");
-      // Note: We DO NOT stop and restart the pedometer listener here! 
-      // Flutter's EventChannel automatically buffers sensor events while the app is in the background.
-      // If we cancel the subscription and restart it, we throw away all the steps taken while the app was in the background!
-      
-      // Also fetch the latest data from the backend to sync any background progress
+      // Poll immediately when app comes to foreground
+      _pollHealthApiSteps();
+      // Also refresh backend data
       fetchTodayData();
     }
   }
 
-  void _initHardwarePedometer() {
-    _uiBatchTimer?.cancel();
-    // 1. Start the live pedometer independently so it doesn't get blocked by Health API OAuth
-    _pedometerService.startListening(
-      onStepsChanged: (stepsToday) {
-        _currentPedometerSteps = stepsToday;
-        
-        if (!_pedometerOffsetInitialized && state.todaySteps != null) {
-          final backendSteps = state.todaySteps!.stepCount;
-          _pedometerOffset = backendSteps - stepsToday;
-          if (_pedometerOffset < 0) _pedometerOffset = 0;
-          _pedometerOffsetInitialized = true;
-          
-          // Immediately sync once when initializing
-          syncSteps(stepsToday + _pedometerOffset);
-        }
+  /// Polls the Health API for today's step count and updates state.
+  /// Health API (Google Health Connect / Apple HealthKit) reads the phone's
+  /// built-in step counter hardware directly. No external device needed.
+  Future<void> _pollHealthApiSteps() async {
+    if (!state.healthAuthorized) return;
+    try {
+      final healthSteps = await _healthService.getTodaySteps();
+      if (healthSteps <= 0) return;
 
-        final expectedTotal = _pedometerOffsetInitialized ? stepsToday + _pedometerOffset : stepsToday;
-        
-        // Active time tracking logic
-        final now = DateTime.now();
-        if (_lastStepTime != null) {
-          final timeDiff = now.difference(_lastStepTime!);
-          final stepDiff = stepsToday - _lastPedometerRawSteps;
-          
-          if (stepDiff > 0) {
-             if (timeDiff.inSeconds <= 15) {
-               // Continuous walking (steps registered within 15 seconds)
-               _accumulatedActiveSeconds += timeDiff.inSeconds;
-             } else {
-               // Bulk step update (e.g. app woke up from background)
-               // Estimate time for these specific missed steps
-               _accumulatedActiveSeconds += (stepDiff / 100 * 60).round();
-             }
-          }
-        }
-        _lastStepTime = now;
-        _lastPedometerRawSteps = stepsToday;
-
-        // Live recalculations for real-time daily stats cards updates (Walked km, Burned kcal, Active mins)
-        TodaySteps? updatedTodaySteps = state.todaySteps;
-        if (updatedTodaySteps != null && expectedTotal > updatedTodaySteps.stepCount) {
-          // Use accumulated real-time tracking, fallback to clinical standard if it somehow failed
-          int newActiveMinutes = (_accumulatedActiveSeconds / 60).round();
-          if (newActiveMinutes == 0 && expectedTotal > 0) {
-            newActiveMinutes = (expectedTotal / 100).round();
-          }
-
-          final activeMinutesToUse = newActiveMinutes > updatedTodaySteps.activeMinutes
-              ? newActiveMinutes
-              : updatedTodaySteps.activeMinutes;
-
-          updatedTodaySteps = updatedTodaySteps.copyWith(
-            stepCount: expectedTotal,
-            caloriesBurned: (expectedTotal * 0.045).round(),
-            distanceKm: expectedTotal * 0.000762,
-            activeMinutes: activeMinutesToUse,
-            progress: ((expectedTotal / updatedTodaySteps.goal) * 100).toInt(),
-            goalReached: expectedTotal >= updatedTodaySteps.goal,
-          );
-        }
-
-        final newFirst = state.firstTrackingTime ?? now;
-        final newLast = now;
-
-        state = state.copyWith(
-          sensorStepsToday: stepsToday,
-          sensorOffset: _pedometerOffset,
-          isSensorListening: _pedometerService.isListening,
-          todaySteps: updatedTodaySteps,
-          firstTrackingTime: newFirst,
-          lastTrackingTime: newLast,
-        );
-      },
-      onErrorOccurred: (err) {
-        state = state.copyWith(
-          sensorErrorMessage: err,
-          isSensorListening: _pedometerService.isListening,
-        );
-      },
-    ).then((_) {
-      state = state.copyWith(
-        isSensorListening: _pedometerService.isListening,
-      );
-    });
-
-    // 2. Request Health SDK (Google Fit) authorization
-    Future.microtask(() async {
-      final authorized = await _healthService.requestAuthorization();
-      state = state.copyWith(
-        healthAuthorized: authorized,
-      );
-    });
-
-    // 3. Batch UI updates every 5 seconds to prevent jitter and save resources
-    _uiBatchTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
-      _checkDayRollover();
-      
-      int stepsToSync = 0;
-      
-      if (_currentPedometerSteps > 0) {
-        // Use real-time physical sensor steps
-        stepsToSync = _pedometerOffsetInitialized 
-            ? _currentPedometerSteps + _pedometerOffset 
-            : _currentPedometerSteps;
-      } else {
-        // Fallback: Query Google Fit / Health Connect / HealthKit
-        try {
-          if (state.healthAuthorized) {
-            final healthSteps = await _healthService.getTodaySteps();
-            if (healthSteps > 0) {
-              stepsToSync = healthSteps;
-            }
-          }
-        } catch (e) {
-          debugPrint('Pedometer: Fallback Health Service query failed: $e');
-        }
+      // Estimate active minutes from step increase between polls
+      final now = DateTime.now();
+      if (_lastStepTime != null && healthSteps > _lastHealthApiSteps) {
+        final stepDiff = healthSteps - _lastHealthApiSteps;
+        final timeDiff = now.difference(_lastStepTime!);
+        // Estimate: ~100 steps/minute of active walking
+        _accumulatedActiveSeconds += (stepDiff / 100 * 60).round().clamp(0, timeDiff.inSeconds);
       }
+      _lastStepTime = now;
+      _lastHealthApiSteps = healthSteps;
 
-      state = state.copyWith(
-        sensorStepsToday: _currentPedometerSteps,
-        sensorOffset: _pedometerOffset,
-        isSensorListening: _pedometerService.isListening,
-      );
-      
-      if (stepsToSync > 0) {
-        // Only trigger if steps actually changed
-        if (state.todaySteps == null || stepsToSync > state.todaySteps!.stepCount) {
-           syncSteps(stepsToSync);
-        }
+      state = state.copyWith(sensorStepsToday: healthSteps);
+
+      if (state.todaySteps == null || healthSteps > state.todaySteps!.stepCount) {
+        syncSteps(healthSteps);
       }
-    });
+    } catch (e) {
+      debugPrint('DashboardNotifier: Health API poll error: $e');
+    }
   }
 
+  void _initHealthPolling() {
+    _uiBatchTimer?.cancel();
 
+    // Request Health authorization and start periodic polling.
+    // Polling every 15 seconds gives near-real-time updates without
+    // draining battery — Health API is OS-cached so each call is cheap.
+    Future.microtask(() async {
+      final authorized = await _healthService.requestAuthorization();
+      state = state.copyWith(healthAuthorized: authorized);
+      if (authorized) {
+        // Immediate first poll
+        await _pollHealthApiSteps();
+      }
+    });
+
+    _uiBatchTimer = Timer.periodic(const Duration(seconds: 15), (timer) async {
+      _checkDayRollover();
+      await _pollHealthApiSteps();
+    });
+  }
 
   void _loadUser() {
     final user = StorageService.getUser();
@@ -541,16 +437,11 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
 
       final backendStepsData = results[0].data;
       final backendSteps = backendStepsData['stepCount'] ?? 0;
-      
-      final expectedTotal = _currentPedometerSteps + _pedometerOffset;
-      if (backendSteps > expectedTotal) {
-         _pedometerOffset = backendSteps - _currentPedometerSteps;
-         if (_pedometerOffset < 0) _pedometerOffset = 0;
-         _pedometerOffsetInitialized = true;
-      } else if (!_pedometerOffsetInitialized) {
-         _pedometerOffset = backendSteps - _currentPedometerSteps;
-         if (_pedometerOffset < 0) _pedometerOffset = 0;
-         _pedometerOffsetInitialized = true;
+
+      // Health API is the authoritative source — backend value wins if higher,
+      // otherwise the in-progress Health API poll will catch up shortly.
+      if (backendSteps > _lastHealthApiSteps) {
+        _lastHealthApiSteps = backendSteps;
       }
 
       // Initialize active seconds from backend if we are just starting
@@ -700,7 +591,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
           'date': today,
           'stepCount': stepCount,
           'activeMinutes': max((_accumulatedActiveSeconds / 60).round(), (stepCount / 100).round()),
-          'source': 'phone_sensors',
+          'source': 'HEALTH_API',
           'nonce': nonce,
           'timestamp': timestamp,
           'integrity': {
@@ -712,7 +603,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
         
         // Removed fetchTodayData() here to prevent infinite loop and health dialog popups
       } catch (e) {
-        print('Pedometer: Failed to sync stepCount $stepCount: $e');
+        print('Health API: Failed to sync stepCount $stepCount: $e');
       }
     }
   }

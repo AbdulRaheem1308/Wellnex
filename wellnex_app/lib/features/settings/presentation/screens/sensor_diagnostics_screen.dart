@@ -1,18 +1,17 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pedometer_2/pedometer_2.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:safe_device/safe_device.dart';
 import 'package:workmanager/workmanager.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../services/pedometer_service.dart';
 import '../../../../services/health_service.dart';
 import '../../../../services/storage_service.dart';
 
 import '../../../../core/services/background_service.dart';
+import '../../../../services/api_service.dart';
 
 class SensorDiagnosticsScreen extends ConsumerStatefulWidget {
   const SensorDiagnosticsScreen({super.key});
@@ -22,12 +21,6 @@ class SensorDiagnosticsScreen extends ConsumerStatefulWidget {
 }
 
 class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScreen> {
-  // Real-time sensor stream elements
-  final Pedometer _pedometer = Pedometer();
-  StreamSubscription<int>? _subscription;
-  int _rawSensorSteps = -1;
-  String _sensorError = 'No stream started';
-
   // Permission statuses
   PermissionStatus _activityPermission = PermissionStatus.denied;
 
@@ -40,12 +33,9 @@ class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScree
   bool _isJailbroken = false;
   bool _isMockLocation = false;
 
-  // Local storage values
-  int _baselineSteps = -1;
-  String _baselineSyncDate = 'N/A';
-  
-  // Health SDK state
+  // Health API state
   int _healthStepsToday = -1;
+  bool _healthAuthorized = false;
 
   bool _isLoading = false;
 
@@ -53,12 +43,10 @@ class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScree
   void initState() {
     super.initState();
     _loadDiagnostics();
-    _startRealtimeSensorListening();
   }
 
   @override
   void dispose() {
-    _subscription?.cancel();
     super.dispose();
   }
 
@@ -86,9 +74,18 @@ class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScree
         debugPrint('SafeDevice check failed: $e');
       }
 
-      // 4. Read Pedometer Storage baseline values
-      final baseSteps = StorageService.get<int>('pedometer_baseline_steps') ?? -1;
-      final baseDate = StorageService.get<String>('pedometer_last_sync_date') ?? 'N/A';
+      // 4. Test Health API authorization
+      bool healthAuth = false;
+      int healthSteps = -1;
+      try {
+        final healthService = HealthService();
+        healthAuth = await healthService.requestAuthorization();
+        if (healthAuth) {
+          healthSteps = await healthService.getTodaySteps();
+        }
+      } catch (e) {
+        debugPrint('Health check failed: $e');
+      }
 
       if (mounted) {
         setState(() {
@@ -98,8 +95,8 @@ class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScree
           _isRealDevice = realDevice;
           _isJailbroken = jailbroken;
           _isMockLocation = mockLocation;
-          _baselineSteps = baseSteps;
-          _baselineSyncDate = baseDate;
+          _healthAuthorized = healthAuth;
+          _healthStepsToday = healthSteps;
         });
       }
     } catch (e) {
@@ -111,55 +108,11 @@ class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScree
     }
   }
 
-  void _startRealtimeSensorListening() {
-    try {
-      _subscription = _pedometer.stepCountStream().listen(
-        (int steps) {
-          if (mounted) {
-            setState(() {
-              _rawSensorSteps = steps;
-              _sensorError = 'Stream Active (Receiving Events)';
-            });
-          }
-        },
-        onError: (error) {
-          if (mounted) {
-            setState(() {
-              _sensorError = 'Sensor Error: $error';
-            });
-          }
-        },
-        cancelOnError: false,
-      );
-    } catch (e) {
-      setState(() {
-        _sensorError = 'Failed to subscribe: $e';
-      });
-    }
-  }
 
   Future<void> _requestActivityPermission() async {
     final status = await Permission.activityRecognition.request();
     setState(() => _activityPermission = status);
     _loadDiagnostics();
-  }
-
-  Future<void> _testHealthSdkFetch() async {
-    setState(() => _isLoading = true);
-    try {
-      final healthService = HealthService();
-      final isAuthorized = await healthService.requestAuthorization();
-      if (isAuthorized) {
-        final steps = await healthService.getTodaySteps();
-        setState(() => _healthStepsToday = steps);
-      } else {
-        setState(() => _healthStepsToday = -99); // Unauthorized indicator
-      }
-    } catch (e) {
-      setState(() => _healthStepsToday = -500); // Error indicator
-    } finally {
-      setState(() => _isLoading = false);
-    }
   }
 
   Future<void> _triggerOneOffBackgroundTask() async {
@@ -182,17 +135,102 @@ class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScree
     }
   }
 
-  Future<void> _resetPedometerBaseline() async {
-    await StorageService.delete('pedometer_baseline_steps');
-    await StorageService.delete('pedometer_last_sync_date');
-    
-    // Force restart PedometerService listener to generate a new baseline
-    PedometerService().stopListening();
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Pedometer baseline cleared. Walk to re-initialize.')),
+  Future<void> _testHealthSdkFetch() async {
+    setState(() => _isLoading = true);
+    try {
+      final healthService = HealthService();
+      final isAuthorized = await healthService.requestAuthorization();
+      setState(() => _healthAuthorized = isAuthorized);
+      if (isAuthorized) {
+        final steps = await healthService.getTodaySteps();
+        setState(() => _healthStepsToday = steps);
+      } else {
+        setState(() => _healthStepsToday = -99); // Unauthorized indicator
+      }
+    } catch (e) {
+      setState(() => _healthStepsToday = -500); // Error indicator
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _showReportAnomalyDialog() async {
+    final controller = TextEditingController();
+    final isSubmitted = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Report Tracking Issue'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Are your steps inaccurate? Describe the issue below and we will investigate.',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  hintText: 'E.g., I did not walk 20,000 steps today, it spiked randomly.',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
+              child: const Text('Submit Report'),
+            ),
+          ],
+        );
+      },
     );
-    _loadDiagnostics();
+
+    if (isSubmitted == true && controller.text.isNotEmpty && mounted) {
+      setState(() => _isLoading = true);
+      try {
+        // Need to import ApiService here or use ref.read(apiServiceProvider)
+        // Since we are not using ref yet, we can instantiate ApiService directly or via ref.
+        // sensor_diagnostics_screen is a ConsumerStatefulWidget so we have access to `ref`
+        // However, I need to import api_service.dart at the top. Wait, let me just use ApiService manually 
+        // but it's better to use ref.read.
+        // Let's assume ApiService is accessible. I will add the import at the top later if needed.
+        final api = ref.read(apiServiceProvider);
+        await api.post(
+          '/anomalies/report',
+          data: {
+            'description': controller.text,
+            'metadata': {
+              'reportedSteps': _healthStepsToday,
+              'deviceReal': _isRealDevice,
+            }
+          },
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Report submitted successfully!')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to submit report: $e')),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      }
+    }
   }
 
   @override
@@ -238,68 +276,25 @@ class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScree
                 ),
                 const SizedBox(height: 16),
                 _buildSectionCard(
-                  title: 'Real-time Hardware Sensor Pedometer',
+                  title: 'Health API Tracking',
                   icon: Icons.directions_run_rounded,
                   children: [
                     _buildDiagnosticRow(
-                      'Pedometer Service Status', 
-                      PedometerService().isListening ? 'Listening (Active)' : 'Idle',
-                      PedometerService().isListening,
+                      'Health API Source',
+                      'Google Health Connect (Android) / Apple HealthKit (iOS)',
+                      true,
                     ),
                     _buildDiagnosticRow(
-                      'Cumulative Raw Steps (Lifetime)', 
-                      _rawSensorSteps == -1 ? 'Waiting for event...' : _rawSensorSteps.toString(),
-                      _rawSensorSteps != -1,
+                      'Authorization Status',
+                      _healthAuthorized ? 'Authorized ✅' : 'Not Authorized ❌',
+                      _healthAuthorized,
                     ),
                     _buildDiagnosticRow(
-                      'Stored Baseline Value', 
-                      _baselineSteps == -1 ? 'None (Needs setup)' : _baselineSteps.toString(),
-                      _baselineSteps != -1,
-                    ),
-                    _buildDiagnosticRow(
-                      'Baseline Generation Date', 
-                      _baselineSyncDate,
-                      _baselineSyncDate != 'N/A',
-                    ),
-                    _buildDiagnosticRow(
-                      'Calculated Steps Today', 
-                      (_rawSensorSteps != -1 && _baselineSteps != -1)
-                          ? '${_rawSensorSteps - _baselineSteps} steps'
-                          : 'Waiting for sensor event...',
-                      _rawSensorSteps != -1 && _baselineSteps != -1,
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        'Sensor Stream State: $_sensorError',
-                        style: TextStyle(fontSize: 12, color: AppTheme.neutral500),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    ElevatedButton.icon(
-                      onPressed: _resetPedometerBaseline,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Reset Daily Baseline'),
-                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentOrange),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _buildSectionCard(
-                  title: 'Health SDK Integration',
-                  icon: Icons.favorite_border_rounded,
-                  children: [
-                    _buildDiagnosticRow(
-                      'Authorization status', 
-                      _healthStepsToday == -99 ? 'Access Denied' : (_healthStepsToday == -1 ? 'Not Tested' : 'Authorized'),
-                      _healthStepsToday >= 0,
-                    ),
-                    _buildDiagnosticRow(
-                      'Google Fit / HealthKit steps today', 
+                      'Steps Today (Health API)',
                       _healthStepsToday == -1
-                          ? 'Tap button below to test fetch'
+                          ? 'Tap Refresh to test'
                           : (_healthStepsToday == -99
-                              ? 'Unauthorized'
+                              ? 'Unauthorized — grant permission'
                               : '$_healthStepsToday steps'),
                       _healthStepsToday >= 0,
                     ),
@@ -307,7 +302,7 @@ class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScree
                     ElevatedButton.icon(
                       onPressed: _testHealthSdkFetch,
                       icon: const Icon(Icons.search),
-                      label: const Text('Test Fetch Health Steps'),
+                      label: const Text('Re-Test Health API Fetch'),
                       style: ElevatedButton.styleFrom(backgroundColor: AppTheme.secondaryBlue),
                     ),
                   ],
@@ -325,6 +320,27 @@ class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScree
                       icon: const Icon(Icons.sync_problem),
                       label: const Text('Force Trigger Background Sync Task'),
                       style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildSectionCard(
+                  title: 'Support & Issue Reporting',
+                  icon: Icons.support_agent,
+                  children: [
+                    const Text(
+                      'If you notice significant discrepancies in your step tracking (e.g. thousands of ghost steps), please report an anomaly to our engineering team.',
+                      style: TextStyle(fontSize: 13, height: 1.4),
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton.icon(
+                      onPressed: _showReportAnomalyDialog,
+                      icon: const Icon(Icons.bug_report),
+                      label: const Text('Report Tracking Anomaly'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.accentOrange,
+                        foregroundColor: Colors.white,
+                      ),
                     ),
                   ],
                 ),

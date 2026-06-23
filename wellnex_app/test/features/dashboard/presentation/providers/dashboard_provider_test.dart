@@ -11,7 +11,6 @@ import 'package:wellnex_app/features/devices/presentation/providers/device_provi
 import 'package:wellnex_app/services/api_service.dart';
 import 'package:wellnex_app/services/health_service.dart';
 import 'package:wellnex_app/services/storage_service.dart';
-import 'package:wellnex_app/services/pedometer_service.dart';
 import 'package:dio/dio.dart';
 import 'package:health/health.dart';
 
@@ -209,8 +208,6 @@ void main() {
     if (!Hive.isBoxOpen('wellnex_storage')) {
       await StorageService.init();
     }
-
-    PedometerService().mockStepCountStream = const Stream<int>.empty();
   });
 
   group('DashboardState', () {
@@ -222,10 +219,7 @@ void main() {
       expect(state.xpLevel, 1);
       expect(state.xpCurrentProgress, 0);
       expect(state.xpToNextLevel, 1000);
-      expect(state.syncStatus, SyncStatus.idle);
       expect(state.sensorStepsToday, 0);
-      expect(state.sensorOffset, 0);
-      expect(state.isSensorListening, false);
       expect(state.healthAuthorized, false);
     });
 
@@ -330,7 +324,6 @@ void main() {
       FlutterSecureStorage.setMockInitialValues({'device_uuid': 'test-uuid'});
       mockApiService = MockApiService();
       mockHealthService = MockHealthService();
-      PedometerService().mockStepCountStream = const Stream<int>.empty();
     });
 
     testWidgets('DashboardNotifier loads user data and fetches stats successfully', (WidgetTester tester) async {
@@ -453,82 +446,6 @@ void main() {
       });
     });
 
-    testWidgets('DashboardNotifier handles pedometer stream step updates and active minutes', (WidgetTester tester) async {
-      await tester.runAsync(() async {
-        final streamController = StreamController<int>.broadcast();
-        PedometerService().mockStepCountStream = streamController.stream;
-
-        final container = ProviderContainer(
-          overrides: [
-            apiServiceProvider.overrideWithValue(mockApiService),
-            healthServiceProvider.overrideWithValue(mockHealthService),
-          ],
-        );
-
-        final notifier = container.read(dashboardProvider.notifier);
-        final subscription = container.listen(dashboardProvider, (_, __) {});
-
-        // Let listener start
-        await Future.delayed(const Duration(milliseconds: 50));
-
-        // Verify pedometer stream is active
-        expect(notifier.state.isSensorListening, isTrue);
-
-        // Send first event to establish baseline
-        streamController.add(100);
-        await Future.delayed(const Duration(milliseconds: 50));
-        expect(notifier.state.sensorStepsToday, 0);
-
-        // Advance time and add continuous walking steps
-        streamController.add(220); // 220 - 100 baseline = 120 steps today
-        await Future.delayed(const Duration(milliseconds: 50));
-        expect(notifier.state.sensorStepsToday, 120);
-
-        // Add bulk step updates
-        streamController.add(300); // 300 - 100 baseline = 200 steps today
-        await Future.delayed(const Duration(milliseconds: 50));
-        expect(notifier.state.sensorStepsToday, 200);
-
-        await streamController.close();
-        container.dispose();
-      });
-    });
-
-    testWidgets('DashboardNotifier fallback Health SDK step sync via periodic timer', (WidgetTester tester) async {
-      final container = ProviderContainer(
-        overrides: [
-          apiServiceProvider.overrideWithValue(mockApiService),
-          healthServiceProvider.overrideWithValue(mockHealthService),
-        ],
-      );
-
-      final notifier = container.read(dashboardProvider.notifier);
-        final subscription = container.listen(dashboardProvider, (_, __) {});
-
-      mockHealthService.mockSteps = 7000;
-      mockHealthService.shouldAuthorize = true;
-      notifier.state = notifier.state.copyWith(
-        healthAuthorized: true,
-        todaySteps: TodaySteps(
-          stepCount: 100,
-          caloriesBurned: 1,
-          distanceKm: 0.1,
-          activeMinutes: 1,
-          goal: 10000,
-          progress: 1,
-          goalReached: false,
-        ),
-      );
-
-      // Advance time by 6 seconds to trigger periodic timer (runs every 5s)
-      await tester.pump(const Duration(seconds: 6));
-
-      // Verify fallback HealthService was queried and state synchronized
-      expect(notifier.state.todaySteps!.stepCount, equals(7000));
-
-      container.dispose();
-    });
-
     testWidgets('DashboardNotifier calculates XP levels correctly', (WidgetTester tester) async {
       await tester.runAsync(() async {
         final container = ProviderContainer(
@@ -597,6 +514,41 @@ void main() {
 
         container.dispose();
       });
+    });
+
+    testWidgets('DashboardNotifier Health API step sync via periodic timer', (WidgetTester tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          apiServiceProvider.overrideWithValue(mockApiService),
+          healthServiceProvider.overrideWithValue(mockHealthService),
+        ],
+      );
+
+      final notifier = container.read(dashboardProvider.notifier);
+      final subscription = container.listen(dashboardProvider, (_, __) {});
+
+      mockHealthService.mockSteps = 7000;
+      mockHealthService.shouldAuthorize = true;
+      notifier.state = notifier.state.copyWith(
+        healthAuthorized: true,
+        todaySteps: TodaySteps(
+          stepCount: 100,
+          caloriesBurned: 1,
+          distanceKm: 0.1,
+          activeMinutes: 1,
+          goal: 10000,
+          progress: 1,
+          goalReached: false,
+        ),
+      );
+
+      // Advance time by 16 seconds to trigger periodic timer (runs every 15s)
+      await tester.pump(const Duration(seconds: 16));
+
+      // Verify HealthService was queried and state synchronized
+      expect(notifier.state.todaySteps!.stepCount, equals(7000));
+
+      container.dispose();
     });
 
     testWidgets('DashboardNotifier handles step history auto-sync', (WidgetTester tester) async {

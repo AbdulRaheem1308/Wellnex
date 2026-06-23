@@ -61,14 +61,6 @@ void main() {
         return true;
       },
     );
-    
-    // Add EventChannel mock for Pedometer to prevent MissingPluginException
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
-      const MethodChannel('step_count'),
-      (MethodCall methodCall) async {
-        return null; 
-      },
-    );
   });
 
   Widget createWidgetUnderTest() {
@@ -82,12 +74,10 @@ void main() {
   testWidgets('renders diagnostics and loads safe device info', (WidgetTester tester) async {
     await tester.pumpWidget(createWidgetUnderTest());
     await tester.pump();
-    await tester.pump(const Duration(seconds: 1)); // allow futures to complete
     await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('Sensor & Sync Diagnostics'), findsOneWidget);
-    // Because SafeDevice could fail or take time, let's just check if it loaded something.
-    expect(find.text('Activity Recognition'), findsOneWidget);
+    expect(find.text('Health API Tracking'), findsOneWidget);
   });
 
   testWidgets('refresh button triggers reload', (WidgetTester tester) async {
@@ -102,79 +92,30 @@ void main() {
     expect(find.text('Sensor & Sync Diagnostics'), findsOneWidget);
   });
 
-  testWidgets('request activity permission button', (WidgetTester tester) async {
+  testWidgets('re-test health api fetch button', (WidgetTester tester) async {
     await tester.pumpWidget(createWidgetUnderTest());
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    final finder = find.text('Re-Test Health API Fetch');
+    await tester.dragUntilVisible(finder, find.byType(ListView), const Offset(0, -500));
     await tester.pumpAndSettle();
-
-    // Since our mock returns 'granted' (1), the UI might show 'Granted'
-    // If it's already granted, button is disabled.
-    // We can simulate denied by modifying the mock before pump
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
-      const MethodChannel('flutter.baseflow.com/permissions/methods'),
-      (MethodCall methodCall) async {
-        if (methodCall.method == 'checkPermissionStatus') return 0; // denied
-        if (methodCall.method == 'requestPermissions') return {2: 1}; // returns granted
-        return null;
-      },
-    );
-
-    await tester.pumpWidget(createWidgetUnderTest());
+    
+    await tester.tap(finder);
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
-
-    final grantButton = find.text('Grant');
-    if (grantButton.evaluate().isNotEmpty) {
-      await tester.tap(grantButton);
-      await tester.pump();
-      await tester.pump(const Duration(seconds: 1));
-    }
-  });
-
-  testWidgets('reset pedometer baseline button', (WidgetTester tester) async {
-    // Scroll to it
-    tester.view.physicalSize = const Size(1080, 4000);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    await tester.pumpWidget(createWidgetUnderTest());
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-
-    await tester.tap(find.text('Reset Daily Baseline'));
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-
-    expect(find.text('Pedometer baseline cleared. Walk to re-initialize.'), findsOneWidget);
-  });
-
-  testWidgets('test fetch health steps button', (WidgetTester tester) async {
-    tester.view.physicalSize = const Size(1080, 4000);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    await tester.pumpWidget(createWidgetUnderTest());
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-
-    await tester.tap(find.text('Test Fetch Health Steps'));
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-
   });
 
   testWidgets('force trigger background task button', (WidgetTester tester) async {
-    tester.view.physicalSize = const Size(1080, 4000);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
     await tester.pumpWidget(createWidgetUnderTest());
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
 
-    await tester.tap(find.text('Force Trigger Background Sync Task'));
+    final finder = find.text('Force Trigger Background Sync Task');
+    await tester.dragUntilVisible(finder, find.byType(ListView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    await tester.tap(finder);
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
 
