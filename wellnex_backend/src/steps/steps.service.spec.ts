@@ -34,6 +34,9 @@ describe("StepsService", () => {
     wallet: {
       upsert: jest.fn(),
     },
+    anomaly: {
+      create: jest.fn().mockResolvedValue({}),
+    },
   };
 
   const mockConfig = {
