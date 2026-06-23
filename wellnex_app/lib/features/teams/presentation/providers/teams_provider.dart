@@ -110,6 +110,7 @@ class TeamsNotifier extends StateNotifier<TeamsState> {
       final team = Team.fromJson(response.data);
       state = state.copyWith(
         myTeams: [...state.myTeams, team],
+        publicTeams: isPublic ? [...state.publicTeams, team] : state.publicTeams,
         isLoading: false,
       );
       return team;

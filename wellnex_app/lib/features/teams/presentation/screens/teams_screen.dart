@@ -19,6 +19,7 @@ class TeamsScreen extends ConsumerStatefulWidget {
 class _TeamsScreenState extends ConsumerState<TeamsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -126,35 +127,68 @@ class _TeamsScreenState extends ConsumerState<TeamsScreen>
   }
 
   Widget _buildDiscoverTab(TeamsState state) {
-    if (state.isLoading && state.publicTeams.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    final filteredTeams = state.publicTeams.where((team) {
+      return team.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+             team.description.toLowerCase().contains(_searchQuery.toLowerCase());
+    }).toList();
 
-    if (state.publicTeams.isEmpty) {
-      return _buildEmptyState(
-        icon: Icons.search_off,
-        title: 'No Public Teams',
-        subtitle: 'Be the first to create a public team!',
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: () => ref.read(teamsProvider.notifier).fetchPublicTeams(),
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: state.publicTeams.length,
-        itemBuilder: (context, index) {
-          final team = state.publicTeams[index];
-          return TeamCard(
-            team: team,
-            showJoinButton: true,
-            onJoin: () => _joinTeam(team),
-            onTap: () => context.push('/teams/${team.id}'),
-          ).animate(delay: (index * 100).ms)
-              .fadeIn(duration: 300.ms)
-              .slideX(begin: 0.1, end: 0);
-        },
-      ),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: TextField(
+            onChanged: (value) {
+              setState(() {
+                _searchQuery = value;
+              });
+            },
+            decoration: InputDecoration(
+              hintText: 'Search public teams...',
+              prefixIcon: const Icon(Icons.search),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Theme.of(context).dividerColor),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Theme.of(context).dividerColor),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppTheme.primaryGreen, width: 2),
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          child: state.isLoading && state.publicTeams.isEmpty
+              ? const Center(child: CircularProgressIndicator())
+              : filteredTeams.isEmpty
+                  ? _buildEmptyState(
+                      icon: Icons.search_off,
+                      title: state.publicTeams.isEmpty ? 'No Public Teams' : 'No matches found',
+                      subtitle: state.publicTeams.isEmpty ? 'Be the first to create a public team!' : 'Try a different search term',
+                    )
+                  : RefreshIndicator(
+                      onRefresh: () => ref.read(teamsProvider.notifier).fetchPublicTeams(),
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        itemCount: filteredTeams.length,
+                        itemBuilder: (context, index) {
+                          final team = filteredTeams[index];
+                          return TeamCard(
+                            team: team,
+                            showJoinButton: true,
+                            onJoin: () => _joinTeam(team),
+                            onTap: () => context.push('/teams/${team.id}'),
+                          ).animate(delay: (index * 50).ms)
+                              .fadeIn(duration: 300.ms)
+                              .slideX(begin: 0.1, end: 0);
+                        },
+                      ),
+                    ),
+        ),
+      ],
     );
   }
 
