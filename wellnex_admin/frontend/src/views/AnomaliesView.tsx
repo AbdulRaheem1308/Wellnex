@@ -1,5 +1,5 @@
 import React from "react";
-import { Search, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 
 interface Anomaly {
   id: string;
