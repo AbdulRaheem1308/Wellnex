@@ -33,10 +33,11 @@ class DeviceSyncScreen extends ConsumerWidget {
         title: Text(l10n.deviceManagement),
         centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
             // Header
             Text(
               l10n.connectedDevices,
@@ -94,6 +95,7 @@ class DeviceSyncScreen extends ConsumerWidget {
             const SizedBox(height: 20),
           ],
         ),
+      ),
       ),
     );
   }
