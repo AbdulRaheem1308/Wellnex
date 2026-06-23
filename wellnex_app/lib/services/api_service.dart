@@ -52,6 +52,19 @@ class ApiService {
     );
   }
 
+  /// Test-only constructor that accepts a pre-built [Dio] instance.
+  /// Interceptors are still attached so all logic paths remain exercisable.
+  @visibleForTesting
+  ApiService.withDio(this._dio) {
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: _onRequest,
+        onResponse: _onResponse,
+        onError: _onError,
+      ),
+    );
+  }
+
   // ── SSL Pinning ───────────────────────────────────────────────────────────
 
   void _configureSslPinning() {
@@ -189,6 +202,29 @@ class ApiService {
     await StorageService.clearUser();
     await onAuthFailure?.call();
   }
+
+  // ── @visibleForTesting helpers ─────────────────────────────────────────────
+
+  @visibleForTesting
+  Future<void> testOnRequest(
+          RequestOptions options, RequestInterceptorHandler handler) =>
+      _onRequest(options, handler);
+
+  @visibleForTesting
+  void testOnResponse(
+          Response<dynamic> response, ResponseInterceptorHandler handler) =>
+      _onResponse(response, handler);
+
+  @visibleForTesting
+  Future<void> testOnError(
+          DioException error, ErrorInterceptorHandler handler) =>
+      _onError(error, handler);
+
+  @visibleForTesting
+  Future<void> testHandleAuthFailure() => _handleAuthFailure();
+
+  @visibleForTesting
+  Future<bool> testRefreshToken() => _refreshToken();
 
   // ── Token Refresh ─────────────────────────────────────────────────────────
 
