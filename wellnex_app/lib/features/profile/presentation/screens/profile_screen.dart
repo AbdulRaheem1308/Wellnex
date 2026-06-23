@@ -794,8 +794,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: unlocked
-                          ? Colors.white
-                          : AppTheme.neutral100,
+                          ? Theme.of(context).colorScheme.surface
+                          : Theme.of(context).dividerColor.withValues(alpha: 0.1),
                       boxShadow: unlocked
                           ? [
                               BoxShadow(
@@ -842,8 +842,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                   fontWeight: FontWeight.bold,
                   fontSize: 11,
                   color: locked
-                      ? AppTheme.neutral400
-                      : AppTheme.neutral800),
+                      ? AppTheme.neutral500
+                      : Theme.of(context).textTheme.bodyLarge?.color),
             ),
             if (inProg)
               Text(
@@ -897,12 +897,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 decoration: BoxDecoration(
                   color: isSelected
                       ? AppTheme.primaryGreen
-                      : Colors.white,
+                      : Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: isSelected
                         ? AppTheme.primaryGreen
-                        : AppTheme.neutral200,
+                        : Theme.of(context).dividerColor,
                     width: 1.5,
                   ),
                   boxShadow: isSelected
@@ -931,7 +931,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                           fontSize: 14,
                           color: isSelected
                               ? Colors.white
-                              : AppTheme.neutral700),
+                              : Theme.of(context).textTheme.bodyLarge?.color),
                     ),
                     if (isSelected) ...[
                       const SizedBox(width: 6),
@@ -992,9 +992,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: AppTheme.neutral50,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.neutral200),
+              border: Border.all(color: Theme.of(context).dividerColor),
             ),
             child: const Row(
               children: [
@@ -1033,8 +1033,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           tileColor: AppTheme.primaryGreen.withValues(alpha: 0.05),
           leading: Container(
             padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(
-                color: Colors.white, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface, shape: BoxShape.circle),
             child:
                 const Icon(Icons.business, color: AppTheme.primaryGreen),
           ),
@@ -1106,10 +1106,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Text(title,
-          style: const TextStyle(
+          style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 17,
-              color: AppTheme.neutral800)),
+              color: Theme.of(context).textTheme.bodyLarge?.color)),
     );
   }
 
