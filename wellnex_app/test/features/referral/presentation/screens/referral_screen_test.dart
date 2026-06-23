@@ -11,9 +11,28 @@ import 'package:share_plus_platform_interface/share_plus_platform_interface.dart
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'dart:io';
+import 'dart:async';
+
+import 'package:screenshot/screenshot.dart';
 
 class MockReferralNotifier extends StateNotifier<ReferralState> with Mock implements ReferralNotifier {
   MockReferralNotifier(super.state);
+}
+
+class FakeScreenshotController extends ScreenshotController {
+  final Future<Uint8List?> Function()? captureMock;
+  FakeScreenshotController({this.captureMock});
+
+  @override
+  Future<Uint8List?> capture({
+    double? pixelRatio,
+    Duration delay = const Duration(milliseconds: 20),
+  }) async {
+    if (captureMock != null) {
+      return captureMock!();
+    }
+    return super.capture(pixelRatio: pixelRatio, delay: delay);
+  }
 }
 
 class FakePathProviderPlatform extends Fake with MockPlatformInterfaceMixin implements PathProviderPlatform {
@@ -25,12 +44,15 @@ class FakePathProviderPlatform extends Fake with MockPlatformInterfaceMixin impl
 }
 
 class FakeSharePlatform extends Fake with MockPlatformInterfaceMixin implements SharePlatform {
+  Completer<void> shareCompleter = Completer<void>();
+
   @override
   Future<ShareResult> share(
     String text, {
     String? subject,
     Rect? sharePositionOrigin,
   }) async {
+    if (!shareCompleter.isCompleted) shareCompleter.complete();
     return const ShareResult('success', ShareResultStatus.success);
   }
 
@@ -42,32 +64,35 @@ class FakeSharePlatform extends Fake with MockPlatformInterfaceMixin implements 
     Rect? sharePositionOrigin,
     List<String>? fileNameOverrides,
   }) async {
+    if (!shareCompleter.isCompleted) shareCompleter.complete();
     return const ShareResult('success', ShareResultStatus.success);
   }
 }
 
 void main() {
   late MockReferralNotifier mockNotifier;
+  late FakeSharePlatform fakeSharePlatform;
 
   setUpAll(() {
     TestWidgetsFlutterBinding.ensureInitialized();
     PathProviderPlatform.instance = FakePathProviderPlatform();
-    SharePlatform.instance = FakeSharePlatform();
   });
 
   setUp(() {
+    fakeSharePlatform = FakeSharePlatform();
+    SharePlatform.instance = fakeSharePlatform;
     mockNotifier = MockReferralNotifier(ReferralState(isLoading: true));
     when(() => mockNotifier.fetchReferralData()).thenAnswer((_) => Future.value());
     when(() => mockNotifier.clearError()).thenReturn(null);
   });
 
-  Widget createWidgetUnderTest() {
+  Widget createWidgetUnderTest({ScreenshotController? screenshotController}) {
     final router = GoRouter(
       initialLocation: '/referral',
       routes: [
         GoRoute(
           path: '/referral',
-          builder: (context, state) => const ReferralScreen(),
+          builder: (context, state) => ReferralScreen(screenshotController: screenshotController),
         ),
         GoRoute(
           path: '/referral-leaderboard',
@@ -203,21 +228,82 @@ void main() {
     await tester.pump(const Duration(seconds: 4));
   });
 
-  testWidgets('share invite captures screenshot and shares', (WidgetTester tester) async {
+  testWidgets('share invite captures screenshot and shares successfully', (WidgetTester tester) async {
     mockNotifier.state = ReferralState(
       isLoading: false,
       stats: const ReferralStats(referralCode: 'CODE123', milestones: []),
     );
+    
+    bool captureCalled = false;
+    final fakeController = FakeScreenshotController(
+      captureMock: () async {
+        captureCalled = true;
+        return Uint8List.fromList([1, 2, 3]);
+      },
+    );
 
-    await tester.pumpWidget(createWidgetUnderTest());
+    await tester.pumpWidget(createWidgetUnderTest(screenshotController: fakeController));
+    await tester.pumpAndSettle();
+
+    await tester.runAsync(() async {
+      await tester.tap(find.text('Invite Friends'));
+      await fakeSharePlatform.shareCompleter.future.timeout(const Duration(seconds: 2));
+    });
+    
+    await tester.pumpAndSettle();
+    
+    expect(captureCalled, true);
+  });
+
+  testWidgets('share invite falls back to text when capture returns null', (WidgetTester tester) async {
+    mockNotifier.state = ReferralState(
+      isLoading: false,
+      stats: const ReferralStats(referralCode: 'CODE123', milestones: []),
+    );
+    
+    bool captureCalled = false;
+    final fakeController = FakeScreenshotController(
+      captureMock: () async {
+        captureCalled = true;
+        return null;
+      },
+    );
+
+    await tester.pumpWidget(createWidgetUnderTest(screenshotController: fakeController));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Invite Friends'));
     await tester.pump();
-
     expect(find.text('Generating invite card...'), findsOneWidget);
     
-    // Clear snackbar to avoid pending timers
-    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+    
+    expect(captureCalled, true);
+  });
+
+  testWidgets('share invite falls back to text on exception', (WidgetTester tester) async {
+    mockNotifier.state = ReferralState(
+      isLoading: false,
+      stats: const ReferralStats(referralCode: 'CODE123', milestones: []),
+    );
+    
+    bool captureCalled = false;
+    final fakeController = FakeScreenshotController(
+      captureMock: () async {
+        captureCalled = true;
+        throw Exception('Capture failed');
+      },
+    );
+
+    await tester.pumpWidget(createWidgetUnderTest(screenshotController: fakeController));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Invite Friends'));
+    await tester.pump();
+    expect(find.text('Generating invite card...'), findsOneWidget);
+    
+    await tester.pumpAndSettle();
+    
+    expect(captureCalled, true);
   });
 }

@@ -15,18 +15,24 @@ import '../widgets/visual_share_card.dart';
 
 /// Invite & Referral Dashboard Screen (Screen 8)
 class ReferralScreen extends ConsumerStatefulWidget {
-  const ReferralScreen({super.key});
+  final ScreenshotController? screenshotController;
+  
+  const ReferralScreen({
+    super.key,
+    this.screenshotController,
+  });
 
   @override
   ConsumerState<ReferralScreen> createState() => _ReferralScreenState();
 }
 
 class _ReferralScreenState extends ConsumerState<ReferralScreen> {
-  final ScreenshotController _screenshotController = ScreenshotController();
+  late final ScreenshotController _screenshotController;
   
   @override
   void initState() {
     super.initState();
+    _screenshotController = widget.screenshotController ?? ScreenshotController();
     Future.microtask(() {
       ref.read(referralProvider.notifier).fetchReferralData();
     });
