@@ -95,7 +95,7 @@ class _TeamLeaderboardScreenState extends ConsumerState<TeamLeaderboardScreen> {
           Icon(Icons.emoji_events_outlined, size: 80, color: AppTheme.neutral300),
           const SizedBox(height: 16),
           Text(
-            'No Teams Yet',
+            'Leaderboard Empty',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: AppTheme.neutral600,
@@ -103,7 +103,7 @@ class _TeamLeaderboardScreenState extends ConsumerState<TeamLeaderboardScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Create or join teams to compete!',
+            'Get your team stepping to appear here!',
             style: TextStyle(color: AppTheme.neutral500),
           ),
         ],
@@ -112,7 +112,7 @@ class _TeamLeaderboardScreenState extends ConsumerState<TeamLeaderboardScreen> {
   }
 
   Widget _buildPodium() {
-    if (_leaderboard.length < 3) return const SizedBox.shrink();
+    if (_leaderboard.isEmpty) return const SizedBox.shrink();
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -121,13 +121,17 @@ class _TeamLeaderboardScreenState extends ConsumerState<TeamLeaderboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           // 2nd place
-          _buildPodiumItem(_leaderboard[1], 2, 100),
-          const SizedBox(width: 12),
+          if (_leaderboard.length > 1) _buildPodiumItem(_leaderboard[1], 2, 100),
+          if (_leaderboard.length > 1) const SizedBox(width: 12),
+          
           // 1st place
-          _buildPodiumItem(_leaderboard[0], 1, 130),
-          const SizedBox(width: 12),
+          if (_leaderboard.isNotEmpty) _buildPodiumItem(_leaderboard[0], 1, 130),
+          
           // 3rd place
-          _buildPodiumItem(_leaderboard[2], 3, 80),
+          if (_leaderboard.length > 2) ...[
+            const SizedBox(width: 12),
+            _buildPodiumItem(_leaderboard[2], 3, 80),
+          ],
         ],
       ),
     ).animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.9, 0.9));
