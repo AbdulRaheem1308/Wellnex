@@ -98,6 +98,21 @@ class MockApiService implements ApiService {
       statusCode: 200,
     );
   }
+
+  @override
+  Future<void> testOnRequest(RequestOptions options, RequestInterceptorHandler handler) async {}
+
+  @override
+  void testOnResponse(Response<dynamic> response, ResponseInterceptorHandler handler) {}
+
+  @override
+  Future<void> testOnError(DioException error, ErrorInterceptorHandler handler) async {}
+
+  @override
+  Future<void> testHandleAuthFailure() async {}
+
+  @override
+  Future<bool> testRefreshToken() async => true;
 }
 
 class MockHealthService implements HealthService {
