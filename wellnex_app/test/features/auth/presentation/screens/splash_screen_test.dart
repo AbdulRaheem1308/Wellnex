@@ -78,6 +78,4 @@ void main() {
       expect(route, AppRoutes.home);
     });
   });
-
 }
-

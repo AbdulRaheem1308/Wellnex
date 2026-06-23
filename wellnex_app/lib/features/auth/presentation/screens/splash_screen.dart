@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -38,26 +39,34 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  Timer? _navTimer;
+
   @override
   void initState() {
     super.initState();
     _checkAuthAndNavigate();
   }
 
-  Future<void> _checkAuthAndNavigate() async {
+  void _checkAuthAndNavigate() {
     // Wait for animation (or skip in tests via testSplashDelay).
-    await Future.delayed(
-        SplashScreen.testSplashDelay ?? const Duration(milliseconds: 2500));
+    _navTimer = Timer(
+        SplashScreen.testSplashDelay ?? const Duration(milliseconds: 2500), () async {
+      if (!mounted) return;
 
-    if (!mounted) return;
+      try {
+        final route = await SplashScreen.resolveStartRoute();
+        if (mounted) context.go(route);
+      } catch (e) {
+        debugPrint('Splash Screen: Error during auth check: $e');
+        if (mounted) context.go(AppRoutes.login);
+      }
+    });
+  }
 
-    try {
-      final route = await SplashScreen.resolveStartRoute();
-      if (mounted) context.go(route);
-    } catch (e) {
-      debugPrint('Splash Screen: Error during auth check: $e');
-      if (mounted) context.go(AppRoutes.login);
-    }
+  @override
+  void dispose() {
+    _navTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -141,16 +150,17 @@ class _SplashScreenState extends State<SplashScreen> {
               const SizedBox(height: 80),
               
               // Loading indicator
-              const SizedBox(
-                width: 40,
-                height: 40,
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  strokeWidth: 3,
-                ),
-              )
-                  .animate(delay: 800.ms)
-                  .fadeIn(duration: 400.ms),
+              if (SplashScreen.testSplashDelay == null)
+                const SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    strokeWidth: 3,
+                  ),
+                )
+                    .animate(delay: 800.ms)
+                    .fadeIn(duration: 400.ms),
             ],
           ),
         ),
