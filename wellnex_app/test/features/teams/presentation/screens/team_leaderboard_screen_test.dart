@@ -76,8 +76,8 @@ void main() {
       // Use pump+duration instead of pumpAndSettle to avoid animation timeout
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('No Teams Yet'), findsOneWidget);
-      expect(find.text('Create or join teams to compete!'), findsOneWidget);
+      expect(find.text('Leaderboard Empty'), findsOneWidget);
+      expect(find.text('Get your team stepping to appear here!'), findsOneWidget);
     });
 
     testWidgets('renders team names when 3+ teams present', (tester) async {
