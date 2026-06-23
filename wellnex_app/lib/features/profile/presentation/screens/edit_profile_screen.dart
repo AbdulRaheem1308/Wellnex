@@ -295,6 +295,23 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(color: Theme.of(context).dividerColor),
                     ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppTheme.primaryGreen, width: 2),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppTheme.error, width: 1.5),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppTheme.error, width: 2),
+                    ),
+                    errorStyle: const TextStyle(
+                      color: AppTheme.error,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
                     filled: true,
                     fillColor: Theme.of(context).colorScheme.surface,
                   ),
@@ -464,6 +481,23 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: Theme.of(context).dividerColor),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppTheme.primaryGreen, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppTheme.error, width: 1.5),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppTheme.error, width: 2),
+        ),
+        errorStyle: const TextStyle(
+          color: AppTheme.error,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
         ),
         filled: true,
         fillColor: readOnly 
