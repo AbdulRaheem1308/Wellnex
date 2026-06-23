@@ -183,40 +183,41 @@ class DeviceSyncScreen extends ConsumerWidget {
                   ),
                   
                   // Disconnect Button
-                  IconButton(
-                    onPressed: isSyncing 
-                      ? null 
-                      : () async {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              title: Text(l10n.disconnectDeviceTitle),
-                              content: Text(l10n.disconnectDeviceConfirm(device.name)),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(ctx, false),
-                                  child: Text(l10n.cancel),
-                                ),
-                                TextButton(
-                                  onPressed: () => Navigator.pop(ctx, true),
-                                  style: TextButton.styleFrom(foregroundColor: AppTheme.error),
-                                  child: Text(l10n.disconnect),
-                                ),
-                              ],
-                            ),
-                          );
-                          if (confirm == true) {
-                            await ref.read(deviceProvider.notifier).removeDevice(device.id);
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(l10n.deviceDisconnectedSuccess(device.name))),
-                              );
+                  if (device.type != 'PHONE')
+                    IconButton(
+                      onPressed: isSyncing 
+                        ? null 
+                        : () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: Text(l10n.disconnectDeviceTitle),
+                                content: Text(l10n.disconnectDeviceConfirm(device.name)),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx, false),
+                                    child: Text(l10n.cancel),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx, true),
+                                    style: TextButton.styleFrom(foregroundColor: AppTheme.error),
+                                    child: Text(l10n.disconnect),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirm == true) {
+                              await ref.read(deviceProvider.notifier).removeDevice(device.id);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(l10n.deviceDisconnectedSuccess(device.name))),
+                                );
+                              }
                             }
-                          }
-                        },
-                    icon: const Icon(Icons.delete_outline, color: AppTheme.error),
-                    tooltip: l10n.disconnectDeviceTooltip,
-                  ),
+                          },
+                      icon: const Icon(Icons.delete_outline, color: AppTheme.error),
+                      tooltip: l10n.disconnectDeviceTooltip,
+                    ),
                 ],
               ),
             ],

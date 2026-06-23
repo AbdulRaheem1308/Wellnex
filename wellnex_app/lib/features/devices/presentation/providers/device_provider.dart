@@ -108,7 +108,7 @@ class DeviceNotifier extends StateNotifier<DeviceState> {
 
       final deviceUUID = await StorageService.getOrCreateDeviceUUID();
       // Automatically register the user's physical phone built-in pedometer as a connected device if not already present
-      final hasPhone = devices.any((d) => d.type == 'PHONE' && d.identifier == deviceUUID);
+      final hasPhone = devices.any((d) => d.type == 'PHONE');
       if (!hasPhone) {
         try {
           await _apiService.post('/devices', data: {
