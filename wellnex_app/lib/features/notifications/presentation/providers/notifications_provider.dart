@@ -44,16 +44,16 @@ class AppNotification {
   }
 
   static NotificationType _parseType(String? type) {
-    switch (type) {
-      case 'achievement': return NotificationType.achievement;
-      case 'steps': return NotificationType.steps;
-      case 'streak_bonus':
-      case 'reward': return NotificationType.reward;
-      case 'referral':
-      case 'social': return NotificationType.social;
-      case 'challenge': return NotificationType.challenge;
-      default: return NotificationType.system;
-    }
+    if (type == null) return NotificationType.system;
+    
+    final t = type.toLowerCase();
+    if (t.contains('achievement')) return NotificationType.achievement;
+    if (t.contains('step')) return NotificationType.steps;
+    if (t.contains('reward') || t.contains('streak')) return NotificationType.reward;
+    if (t.contains('social') || t.contains('referral')) return NotificationType.social;
+    if (t.contains('challenge')) return NotificationType.challenge;
+    
+    return NotificationType.system;
   }
 
   AppNotification copyWith({bool? isRead}) {
