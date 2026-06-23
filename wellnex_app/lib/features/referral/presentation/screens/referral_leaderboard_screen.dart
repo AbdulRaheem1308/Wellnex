@@ -152,11 +152,13 @@ class _ReferralLeaderboardScreenState extends ConsumerState<ReferralLeaderboardS
     final isTop3 = rank <= 3;
     final earnedCoins = user.referrals * 50;
 
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(vertical: 8),
-      tileColor: isMe ? AppTheme.primaryGreen.withValues(alpha: 0.05) : null,
-      shape: isMe ? RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)) : null,
-      leading: SizedBox(
+    return Material(
+      color: Colors.transparent,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(vertical: 8),
+        tileColor: isMe ? AppTheme.primaryGreen.withValues(alpha: 0.05) : null,
+        shape: isMe ? RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)) : null,
+        leading: SizedBox(
         width: 40,
         child: Center(
           child: isTop3 
@@ -197,6 +199,7 @@ class _ReferralLeaderboardScreenState extends ConsumerState<ReferralLeaderboardS
           ),
           Text('${user.referrals} active', style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodySmall?.color)),
         ],
+      ),
       ),
     ).animate().fadeIn(delay: (30 * rank).ms);
   }
