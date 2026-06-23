@@ -280,102 +280,116 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 ),
                 const SizedBox(height: 16),
                 
-                // Gender
-                DropdownButtonFormField<String>(
-                  value: _gender,
-                  decoration: InputDecoration(
-                    labelText: 'Gender',
-                    labelStyle: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.7)),
-                    prefixIcon: Icon(Icons.people_outline, color: Theme.of(context).iconTheme.color?.withValues(alpha: 0.5)),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Theme.of(context).dividerColor),
+                // Gender & Age
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: _gender,
+                        decoration: InputDecoration(
+                          labelText: 'Gender',
+                          labelStyle: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.7)),
+                          prefixIcon: Icon(Icons.people_outline, color: Theme.of(context).iconTheme.color?.withValues(alpha: 0.5)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Theme.of(context).dividerColor),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Theme.of(context).dividerColor),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppTheme.primaryGreen, width: 2),
+                          ),
+                          errorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppTheme.error, width: 1.5),
+                          ),
+                          focusedErrorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppTheme.error, width: 2),
+                          ),
+                          errorStyle: const TextStyle(
+                            color: AppTheme.error,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          filled: true,
+                          fillColor: Theme.of(context).colorScheme.surface,
+                        ),
+                        items: ['Male', 'Female', 'Other'].map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
+                          );
+                        }).toList(),
+                        onChanged: (newValue) {
+                          if (newValue != null) {
+                            setState(() => _gender = newValue);
+                          }
+                        },
+                      ),
                     ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Theme.of(context).dividerColor),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildTextField(
+                        context: context,
+                        label: 'Age',
+                        controller: _ageController,
+                        keyboardType: TextInputType.number,
+                        icon: Icons.cake_outlined,
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return 'Required';
+                          final age = int.tryParse(v.trim());
+                          if (age == null || age < 10 || age > 120) return '10-120';
+                          return null;
+                        },
+                      ),
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppTheme.primaryGreen, width: 2),
-                    ),
-                    errorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppTheme.error, width: 1.5),
-                    ),
-                    focusedErrorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppTheme.error, width: 2),
-                    ),
-                    errorStyle: const TextStyle(
-                      color: AppTheme.error,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    filled: true,
-                    fillColor: Theme.of(context).colorScheme.surface,
-                  ),
-                  items: ['Male', 'Female', 'Other'].map((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
-                    );
-                  }).toList(),
-                  onChanged: (newValue) {
-                    if (newValue != null) {
-                      setState(() => _gender = newValue);
-                    }
-                  },
+                  ],
                 ),
                 const SizedBox(height: 16),
                 
-                // Age
-                _buildTextField(
-                  context: context,
-                  label: 'Age',
-                  controller: _ageController,
-                  keyboardType: TextInputType.number,
-                  icon: Icons.cake_outlined,
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Age is required';
-                    final age = int.tryParse(v.trim());
-                    if (age == null || age < 10 || age > 120) return 'Invalid age (10-120)';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                
-                // Weight
-                _buildTextField(
-                  context: context,
-                  label: 'Weight (kg)',
-                  controller: _weightController,
-                  keyboardType: TextInputType.number,
-                  icon: Icons.monitor_weight_outlined,
-                  onChanged: (_) => setState(() {}),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Weight is required';
-                    final w = double.tryParse(v.trim());
-                    if (w == null || w < 20 || w > 300) return 'Invalid weight (20-300 kg)';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                
-                // Height
-                _buildTextField(
-                  context: context,
-                  label: 'Height (cm)',
-                  controller: _heightController,
-                  keyboardType: TextInputType.number,
-                  icon: Icons.height,
-                  onChanged: (_) => setState(() {}),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Height is required';
-                    final h = double.tryParse(v.trim());
-                    if (h == null || h < 50 || h > 250) return 'Invalid height (50-250 cm)';
-                    return null;
-                  },
+                // Weight & Height
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _buildTextField(
+                        context: context,
+                        label: 'Weight (kg)',
+                        controller: _weightController,
+                        keyboardType: TextInputType.number,
+                        icon: Icons.monitor_weight_outlined,
+                        onChanged: (_) => setState(() {}),
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return 'Required';
+                          final w = double.tryParse(v.trim());
+                          if (w == null || w < 20 || w > 300) return '20-300';
+                          return null;
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildTextField(
+                        context: context,
+                        label: 'Height (cm)',
+                        controller: _heightController,
+                        keyboardType: TextInputType.number,
+                        icon: Icons.height,
+                        onChanged: (_) => setState(() {}),
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return 'Required';
+                          final h = double.tryParse(v.trim());
+                          if (h == null || h < 50 || h > 250) return '50-250';
+                          return null;
+                        },
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
                 
