@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:health/health.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -16,7 +17,9 @@ class HealthService {
 
   Future<void> _ensureConfigured() async {
     if (!_isConfigured) {
-      await _health.configure();
+      if (!Platform.environment.containsKey('FLUTTER_TEST')) {
+        await _health.configure();
+      }
       _isConfigured = true;
     }
   }

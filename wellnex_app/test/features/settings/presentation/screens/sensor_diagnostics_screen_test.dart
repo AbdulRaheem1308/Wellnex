@@ -28,7 +28,7 @@ void main() {
       const MethodChannel('flutter.baseflow.com/permissions/methods'),
       (MethodCall methodCall) async {
         if (methodCall.method == 'checkPermissionStatus') return 1; // granted
-        if (methodCall.method == 'requestPermissions') return {2: 1}; // granted
+        if (methodCall.method == 'requestPermissions') return {29: 1, 2: 1}; // granted
         return 1;
       },
     );
@@ -40,7 +40,7 @@ void main() {
         if (m.contains('realdevice')) return true;
         if (m.contains('jailbroken')) return false;
         if (m.contains('mocklocation')) return false;
-        return false;
+        return true;
       },
     );
 
@@ -61,6 +61,14 @@ void main() {
         return true;
       },
     );
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('plugins.flutter.io/device_info_plus'),
+      (MethodCall methodCall) async {
+        return {
+          'isPhysicalDevice': true,
+        };
+      },
+    );
   });
 
   Widget createWidgetUnderTest() {
@@ -71,53 +79,63 @@ void main() {
     );
   }
 
+  Future<void> waitForListView(WidgetTester tester) async {
+    bool found = false;
+    for (int i = 0; i < 50; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+      if (find.byType(ListView).evaluate().isNotEmpty) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      throw Exception('ListView never appeared! _isLoading must be stuck.');
+    }
+  }
+
   testWidgets('renders diagnostics and loads safe device info', (WidgetTester tester) async {
     await tester.pumpWidget(createWidgetUnderTest());
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
+    await waitForListView(tester);
 
-    expect(find.text('Sensor & Sync Diagnostics'), findsOneWidget);
-    expect(find.text('Health API Tracking'), findsOneWidget);
+    expect(find.text('Sensor & Sync Diagnostics', skipOffstage: false), findsOneWidget);
+    expect(find.text('Health API Tracking', skipOffstage: false), findsOneWidget);
   });
 
   testWidgets('refresh button triggers reload', (WidgetTester tester) async {
     await tester.pumpWidget(createWidgetUnderTest());
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
+    await waitForListView(tester);
 
     await tester.tap(find.byType(IconButton).first);
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(milliseconds: 100));
+    await waitForListView(tester);
 
-    expect(find.text('Sensor & Sync Diagnostics'), findsOneWidget);
+    expect(find.text('Sensor & Sync Diagnostics', skipOffstage: false), findsOneWidget);
   });
 
   testWidgets('re-test health api fetch button', (WidgetTester tester) async {
     await tester.pumpWidget(createWidgetUnderTest());
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
+    await waitForListView(tester);
 
-    final finder = find.text('Re-Test Health API Fetch');
+    final finder = find.text('Re-Test Health API Fetch', skipOffstage: false);
     await tester.dragUntilVisible(finder, find.byType(ListView), const Offset(0, -500));
     await tester.pumpAndSettle();
     
     await tester.tap(finder);
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(milliseconds: 100));
+    await waitForListView(tester);
   });
 
   testWidgets('force trigger background task button', (WidgetTester tester) async {
     await tester.pumpWidget(createWidgetUnderTest());
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
+    await waitForListView(tester);
 
-    final finder = find.text('Force Trigger Background Sync Task');
+    final finder = find.text('Force Trigger Background Sync Task', skipOffstage: false);
     await tester.dragUntilVisible(finder, find.byType(ListView), const Offset(0, -500));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 500));
 
     await tester.tap(finder);
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(milliseconds: 100));
+    await waitForListView(tester);
 
     expect(find.byType(SnackBar), findsOneWidget);
   });

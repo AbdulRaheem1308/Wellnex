@@ -67,9 +67,9 @@ class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScree
       bool jailbroken = false;
       bool mockLocation = false;
       try {
-        realDevice = await SafeDevice.isRealDevice;
-        jailbroken = await SafeDevice.isJailBroken;
-        mockLocation = await SafeDevice.isMockLocation;
+        realDevice = await SafeDevice.isRealDevice.timeout(const Duration(seconds: 2));
+        jailbroken = await SafeDevice.isJailBroken.timeout(const Duration(seconds: 2));
+        mockLocation = await SafeDevice.isMockLocation.timeout(const Duration(seconds: 2));
       } catch (e) {
         debugPrint('SafeDevice check failed: $e');
       }
@@ -79,7 +79,7 @@ class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScree
       int healthSteps = -1;
       try {
         final healthService = HealthService();
-        healthAuth = await healthService.requestAuthorization();
+        healthAuth = await healthService.requestAuthorization().timeout(const Duration(seconds: 2));
         if (healthAuth) {
           healthSteps = await healthService.getTodaySteps();
         }
