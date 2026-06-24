@@ -21,8 +21,12 @@ void callbackDispatcher() {
 class BackgroundService {
 
   @visibleForTesting
-  static Future<bool> runBackgroundSyncTask(String task) async {
+  static Future<bool> runBackgroundSyncTask(String task, {
+    ApiService? apiServiceOverride,
+    HealthService? healthServiceOverride,
+  }) async {
     try {
+      if (task == 'force_fatal_error') throw Exception('Fatal error for test');
       if (task == kBackgroundSyncTask) {
         // 0. Initialize Hive and StorageService inside the isolate environment
         await Hive.initFlutter();
@@ -42,8 +46,8 @@ class BackgroundService {
         }
 
         // 2. Initialize Services
-        final apiService = ApiService(); 
-        final healthService = HealthService();
+        final apiService = apiServiceOverride ?? ApiService(); 
+        final healthService = healthServiceOverride ?? HealthService();
         final deviceUUID = await StorageService.getOrCreateDeviceUUID();
 
         // 2.5 Ensure the physical phone device is registered in the backend
@@ -129,39 +133,54 @@ class BackgroundService {
 
   static bool _initialized = false;
 
+  @visibleForTesting
+  static set initialized(bool value) => _initialized = value;
+
   static Future<void> init() async {
     if (_initialized) return;
-    if (kIsWeb || Platform.environment.containsKey('FLUTTER_TEST')) {
+    if (kIsWeb) {
       _initialized = true;
       return;
     }
-    await Workmanager().initialize(
-      callbackDispatcher,
-      isInDebugMode: kDebugMode,
-    );
+    try {
+      await Workmanager().initialize(
+        callbackDispatcher,
+        isInDebugMode: kDebugMode,
+      );
+    } catch (e) {
+      if (e is! UnimplementedError) rethrow;
+    }
     _initialized = true;
   }
 
   static Future<void> registerPeriodicTask() async {
     await init();
-    if (kIsWeb || Platform.environment.containsKey('FLUTTER_TEST')) return;
+    if (kIsWeb) return;
     
-    await Workmanager().registerPeriodicTask(
-      "wellnex_sync_job",
-      kBackgroundSyncTask,
-      frequency: const Duration(minutes: 15), // Android minimum
-      constraints: Constraints(
-        networkType: NetworkType.connected, 
-        requiresBatteryNotLow: true,
-      ),
-      existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
-    );
+    try {
+      await Workmanager().registerPeriodicTask(
+        "wellnex_sync_job",
+        kBackgroundSyncTask,
+        frequency: const Duration(minutes: 15), // Android minimum
+        constraints: Constraints(
+          networkType: NetworkType.connected, 
+          requiresBatteryNotLow: true,
+        ),
+        existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
+      );
+    } catch (e) {
+      if (e is! UnimplementedError) rethrow;
+    }
   }
 
   static Future<void> cancelTask() async {
     await init();
-    if (kIsWeb || Platform.environment.containsKey('FLUTTER_TEST')) return;
+    if (kIsWeb) return;
     
-    await Workmanager().cancelAll();
+    try {
+      await Workmanager().cancelAll();
+    } catch (e) {
+      if (e is! UnimplementedError) rethrow;
+    }
   }
 }
