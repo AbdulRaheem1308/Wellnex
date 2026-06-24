@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,8 +7,10 @@ import 'package:wellnex_app/features/gamification/presentation/providers/streak_
 import 'package:wellnex_app/features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:wellnex_app/services/api_service.dart';
 import 'package:wellnex_app/services/health_service.dart';
+import 'package:wellnex_app/services/storage_service.dart';
 import 'package:wellnex_app/l10n/app_localizations.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:dio/dio.dart';
 
 class MockApiService extends Mock implements ApiService {}
@@ -23,37 +26,58 @@ class StubStreakNotifier extends StreakNotifier {
 }
 
 class StubDashboardNotifier extends DashboardNotifier {
-  StubDashboardNotifier(super.apiService, super.healthService, DashboardState initialState) {
+  StubDashboardNotifier(super.api, super.health, DashboardState initialState) {
     state = initialState;
+  }
+
+  @override
+  void initHealthPolling() {
+    // Do nothing for tests
   }
 }
 
 void main() {
+  setUpAll(() async {
+    final tempDir = Directory.systemTemp.createTempSync('hive_streak_test');
+    Hive.init(tempDir.path);
+    await StorageService.init();
+  });
+
+  setUp(() {
+    registerFallbackValue(Uri());
+  });
+
   testWidgets('StreakScreen renders loading state', (WidgetTester tester) async {
     final mockApi = MockApiService();
     final mockHealth = MockHealthService();
+    when(() => mockHealth.requestAuthorization()).thenAnswer((_) async => true);
+    when(() => mockHealth.getTodaySteps()).thenAnswer((_) async => 0);
     when(() => mockApi.get(any())).thenAnswer((_) async => Response(
       requestOptions: RequestOptions(path: ''),
       data: [],
       statusCode: 200,
     ));
 
+    final container = ProviderContainer(
+      overrides: [
+        apiServiceProvider.overrideWithValue(mockApi),
+        streakProvider.overrideWith((ref) => StubStreakNotifier(mockApi, StreakState(isLoading: true))),
+        dashboardProvider.overrideWith((ref) => StubDashboardNotifier(mockApi, mockHealth, DashboardState(
+          isLoading: true,
+          xpLevel: 1,
+          xpCurrentProgress: 0,
+          xpToNextLevel: 100,
+          syncStatus: SyncStatus.synced,
+          sensorStepsToday: 0,
+          healthAuthorized: true,
+          weeklyHistory: [],
+        ))),
+      ],
+    );
+
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          apiServiceProvider.overrideWithValue(mockApi),
-          streakProvider.overrideWith((ref) => StubStreakNotifier(mockApi, StreakState(isLoading: true))),
-          dashboardProvider.overrideWith((ref) => StubDashboardNotifier(mockApi, mockHealth, DashboardState(
-            isLoading: true,
-            xpLevel: 1,
-            xpCurrentProgress: 0,
-            xpToNextLevel: 100,
-            syncStatus: SyncStatus.synced,
-            sensorStepsToday: 0,
-            healthAuthorized: true,
-            weeklyHistory: [],
-          ))),
-        ],
+      UncontrolledProviderScope(
+        container: container,
         child: const MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
@@ -62,40 +86,53 @@ void main() {
       ),
     );
 
+    await tester.pump();
     expect(find.byType(CircularProgressIndicator), findsWidgets);
+
+    // Unmount the widget tree to dispose flutter_animate's infinite animation controllers
+    await tester.pumpWidget(const SizedBox());
+    // Clear any pending timers from delays
+    await tester.pump(const Duration(seconds: 1));
+    container.dispose();
   });
 
   testWidgets('StreakScreen renders streak data', (WidgetTester tester) async {
     final mockApi = MockApiService();
     final mockHealth = MockHealthService();
+    when(() => mockHealth.requestAuthorization()).thenAnswer((_) async => true);
+    when(() => mockHealth.getTodaySteps()).thenAnswer((_) async => 0);
     when(() => mockApi.get(any())).thenAnswer((_) async => Response(
       requestOptions: RequestOptions(path: ''),
       data: [],
       statusCode: 200,
     ));
 
+    final container = ProviderContainer(
+      overrides: [
+        apiServiceProvider.overrideWithValue(mockApi),
+        streakProvider.overrideWith((ref) => StubStreakNotifier(mockApi, StreakState(
+          isLoading: false,
+          currentStreak: 5,
+          longestStreak: 10,
+          activeDates: [],
+        ))),
+        dashboardProvider.overrideWith((ref) => StubDashboardNotifier(mockApi, mockHealth, DashboardState(
+          isLoading: false,
+          streak: StreakInfo(currentStreak: 5, longestStreak: 10),
+          xpLevel: 1,
+          xpCurrentProgress: 0,
+          xpToNextLevel: 100,
+          syncStatus: SyncStatus.synced,
+          sensorStepsToday: 0,
+          healthAuthorized: true,
+          weeklyHistory: [],
+        ))),
+      ],
+    );
+
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          apiServiceProvider.overrideWithValue(mockApi),
-          streakProvider.overrideWith((ref) => StubStreakNotifier(mockApi, StreakState(
-            isLoading: false,
-            currentStreak: 5,
-            longestStreak: 10,
-            activeDates: [],
-          ))),
-          dashboardProvider.overrideWith((ref) => StubDashboardNotifier(mockApi, mockHealth, DashboardState(
-            isLoading: false,
-            streak: StreakInfo(currentStreak: 5, longestStreak: 10),
-            xpLevel: 1,
-            xpCurrentProgress: 0,
-            xpToNextLevel: 100,
-            syncStatus: SyncStatus.synced,
-            sensorStepsToday: 0,
-            healthAuthorized: true,
-            weeklyHistory: [],
-          ))),
-        ],
+      UncontrolledProviderScope(
+        container: container,
         child: const MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
@@ -104,7 +141,13 @@ void main() {
       ),
     );
 
-    await tester.pumpAndSettle();
-    // Test completes rendering
+    await tester.pump();
+    expect(find.text('5'), findsWidgets);
+
+    // Unmount the widget tree to dispose flutter_animate's infinite animation controllers
+    await tester.pumpWidget(const SizedBox());
+    // Clear any pending timers from delays
+    await tester.pump(const Duration(seconds: 1));
+    container.dispose();
   });
 }

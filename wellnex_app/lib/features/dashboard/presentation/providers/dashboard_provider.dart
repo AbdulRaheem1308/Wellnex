@@ -232,7 +232,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
 
   DashboardNotifier(this._apiService, this._healthService) : super(DashboardState()) {
     _loadUser();
-    _initHealthPolling();
+    initHealthPolling();
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -298,7 +298,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
     }
   }
 
-  void _initHealthPolling() {
+  void initHealthPolling() {
     _uiBatchTimer?.cancel();
 
     // Request Health authorization and start periodic polling.
