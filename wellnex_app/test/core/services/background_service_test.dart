@@ -48,6 +48,11 @@ class MockHealthService implements HealthService {
     if (onGetSteps != null) return onGetSteps!();
     return 1000;
   }
+  @override
+  Future<bool> isHealthConnectAvailable() async => true;
+
+  @override
+  Future<void> installHealthConnect() async {}
   
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

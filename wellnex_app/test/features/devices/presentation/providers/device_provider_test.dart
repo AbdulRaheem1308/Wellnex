@@ -141,6 +141,12 @@ class MockHealthService implements HealthService {
   Future<List<HealthDataPoint>> getRecentWorkouts(int days) async {
     return [];
   }
+
+  @override
+  Future<bool> isHealthConnectAvailable() async => true;
+
+  @override
+  Future<void> installHealthConnect() async {}
 }
 
 void main() {

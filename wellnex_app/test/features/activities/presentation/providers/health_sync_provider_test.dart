@@ -31,6 +31,12 @@ class MockHealthService implements HealthService {
 
   @override
   Future<int> getTodaySteps() async => 0;
+
+  @override
+  Future<bool> isHealthConnectAvailable() async => true;
+
+  @override
+  Future<void> installHealthConnect() async {}
 }
 
 class MockActivityNotifier extends StateNotifier<ActivityState> implements ActivityNotifier {
