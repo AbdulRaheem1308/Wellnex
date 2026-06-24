@@ -43,11 +43,8 @@ class _DeviceSyncScreenState extends ConsumerState<DeviceSyncScreen> {
         if (!isAvailable) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Health Connect is not installed. Redirecting to Play Store...')),
+              const SnackBar(content: Text('Health Connect is not available on this device.')),
             );
-          }
-          await health.installHealthConnect();
-          if (mounted) {
             setState(() {
               _healthAuthorized = false;
               _todaySteps = 0;

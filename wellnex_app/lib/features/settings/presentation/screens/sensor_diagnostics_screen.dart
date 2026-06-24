@@ -144,9 +144,8 @@ class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScree
         final isAvailable = await healthService.isHealthConnectAvailable();
         if (!isAvailable) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Health Connect is not installed. Redirecting to Play Store...')),
+            const SnackBar(content: Text('Health Connect is not available on this device.')),
           );
-          await healthService.installHealthConnect();
           setState(() {
             _healthAuthorized = false;
             _healthStepsToday = -99;
