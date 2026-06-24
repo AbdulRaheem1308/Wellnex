@@ -143,6 +143,7 @@ class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScree
       if (Theme.of(context).platform == TargetPlatform.android) {
         final isAvailable = await healthService.isHealthConnectAvailable();
         if (!isAvailable) {
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Health Connect is not available on this device.')),
           );
