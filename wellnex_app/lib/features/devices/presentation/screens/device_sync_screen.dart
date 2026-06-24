@@ -37,6 +37,27 @@ class _DeviceSyncScreenState extends ConsumerState<DeviceSyncScreen> {
     setState(() => _loading = true);
     try {
       final health = HealthService();
+      
+      if (Theme.of(context).platform == TargetPlatform.android) {
+        final isAvailable = await health.isHealthConnectAvailable();
+        if (!isAvailable) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Health Connect is not installed. Redirecting to Play Store...')),
+            );
+          }
+          await health.installHealthConnect();
+          if (mounted) {
+            setState(() {
+              _healthAuthorized = false;
+              _todaySteps = 0;
+              _loading = false;
+            });
+          }
+          return;
+        }
+      }
+
       final authorized = await health.requestAuthorization();
       final steps = authorized ? await health.getTodaySteps() : 0;
       if (mounted) {

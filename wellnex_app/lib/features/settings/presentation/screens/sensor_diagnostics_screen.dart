@@ -139,6 +139,22 @@ class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScree
     setState(() => _isLoading = true);
     try {
       final healthService = HealthService();
+
+      if (Theme.of(context).platform == TargetPlatform.android) {
+        final isAvailable = await healthService.isHealthConnectAvailable();
+        if (!isAvailable) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Health Connect is not installed. Redirecting to Play Store...')),
+          );
+          await healthService.installHealthConnect();
+          setState(() {
+            _healthAuthorized = false;
+            _healthStepsToday = -99;
+          });
+          return;
+        }
+      }
+
       final isAuthorized = await healthService.requestAuthorization();
       setState(() => _healthAuthorized = isAuthorized);
       if (isAuthorized) {

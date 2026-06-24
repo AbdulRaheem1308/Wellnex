@@ -161,6 +161,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
 
                     const SizedBox(height: 16),
                     
+                    if (!dashboard.healthAuthorized)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16.0),
+                        child: Material(
+                          color: Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          child: InkWell(
+                            onTap: () => context.push(AppRoutes.deviceSync),
+                            borderRadius: BorderRadius.circular(12),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.warning_amber_rounded, color: Colors.red),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      AppLocalizations.of(context)?.localeName == 'en' 
+                                          ? 'Health tracking not authorized. Tap to connect.' 
+                                          : 'Health tracking not authorized. Tap to connect.',
+                                      style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.w600),
+                                    ),
+                                  ),
+                                  const Icon(Icons.chevron_right, color: Colors.red),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ).animate().fadeIn(),
+                    
                     // 1.5 AI Suggestions
                     const AiSuggestionsWidget(),
 

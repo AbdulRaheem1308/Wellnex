@@ -42,6 +42,28 @@ class HealthService {
 
   // ── Authorization ─────────────────────────────────────────────────────────
 
+  /// Checks if Google Health Connect is available (Android only).
+  /// Always returns true on iOS.
+  Future<bool> isHealthConnectAvailable() async {
+    if (defaultTargetPlatform != TargetPlatform.android) return true;
+    await _ensureConfigured();
+    try {
+      return await _health.isHealthConnectAvailable();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Prompts the user to install Google Health Connect (Android only).
+  Future<void> installHealthConnect() async {
+    if (defaultTargetPlatform != TargetPlatform.android) return;
+    await _ensureConfigured();
+    try {
+      await _health.installHealthConnect();
+    } catch (_) {}
+  }
+
+
   /// Requests access to health data.
   ///
   /// On Android, also requests the `activityRecognition` permission first.
