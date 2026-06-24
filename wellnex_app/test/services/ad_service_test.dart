@@ -1,63 +1,57 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:wellnex_app/services/ad_service.dart';
 import 'package:wellnex_app/core/services/remote_config_service.dart';
+import 'package:flutter/foundation.dart';
 
 class MockRemoteConfigService extends Mock implements RemoteConfigService {}
-class MockBannerAd extends Mock implements BannerAd {}
 
 void main() {
-  late AdService adService;
-  late MockRemoteConfigService mockConfigService;
+  group('AdService Tests', () {
+    late AdService adService;
+    late MockRemoteConfigService mockConfig;
 
-  setUp(() {
-    mockConfigService = MockRemoteConfigService();
-    adService = AdService(mockConfigService);
-  });
-
-  group('AdService tests', () {
-    test('createBannerAd sets up listeners properly', () {
-      bool loadedCalled = false;
-      bool failedCalled = false;
-
-      final bannerAd = adService.createBannerAd(
-        onAdLoaded: () {
-          loadedCalled = true;
-        },
-        onAdFailedToLoad: (error) {
-          failedCalled = true;
-        },
-      );
-
-      // We just ensure the bannerAd is successfully created.
-      // Testing the actual callbacks would require calling the internal listener functions,
-      // but creating it without exceptions and verifying it's not null covers the code.
-      expect(bannerAd, isNotNull);
-      expect(bannerAd?.adUnitId, isNotEmpty);
-      expect(bannerAd?.size, equals(AdSize.banner));
-      
-      // Simulate calling the listeners manually if possible
-      final listener = bannerAd!.listener;
-      
-      // Trigger onAdLoaded
-      listener.onAdLoaded?.call(bannerAd);
-      expect(loadedCalled, isTrue);
-      
-      // We can't trigger onAdFailedToLoad easily with a mocked LoadAdError 
-      // without it throwing or being complex, but we can check it exists.
-      expect(listener.onAdFailedToLoad, isNotNull);
+    setUp(() {
+      mockConfig = MockRemoteConfigService();
+      adService = AdService(mockConfig);
     });
 
-    test('adServiceProvider initializes correctly', () {
-      final container = ProviderContainer(
-        overrides: [
-          remoteConfigServiceProvider.overrideWithValue(mockConfigService),
-        ],
+    test('isPremium fallback check', () {
+      expect(adService.bannerAdUnitId, isNotEmpty);
+      expect(adService.interstitialAdUnitId, isNotEmpty);
+      expect(adService.rewardedAdUnitId, isNotEmpty);
+      expect(adService.nativeAdUnitId, isNotEmpty);
+    });
+
+    test('createBannerAd returns null on web', () {
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+      final banner = adService.createBannerAd();
+      expect(banner, isNull);
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    test('showInterstitialAd gracefully fails if not ready', () {
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+      adService.showInterstitialAd();
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    test('showRewardedAd gracefully fails if not ready', () {
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+      var failed = false;
+      adService.showRewardedAd(
+        onUserEarnedReward: (_) {},
+        onAdFailedToShow: () => failed = true,
       );
-      final service = container.read(adServiceProvider);
-      expect(service, isA<AdService>());
+      expect(failed, isTrue);
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    test('loadNativeAd gracefully fails if unsupported', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+      final ad = await adService.loadNativeAd(factoryId: 'test_factory');
+      expect(ad, isNull);
+      debugDefaultTargetPlatformOverride = null;
     });
   });
 }

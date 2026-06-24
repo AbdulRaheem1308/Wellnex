@@ -212,7 +212,7 @@ void main() {
       );
       expect(res, isTrue);
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('bg_sync_status'), 'Skipped: Health API returned 0 (permission may be pending)');
+      expect(prefs.getString('bg_sync_status'), 'Skipped: Pedometer returned 0 steps');
     });
 
     test('runBackgroundSyncTask - health api throws gracefully', () async {
@@ -224,7 +224,7 @@ void main() {
       );
       expect(res, isTrue);
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('bg_sync_status'), 'Skipped: Health API returned 0 (permission may be pending)');
+      expect(prefs.getString('bg_sync_status'), 'Skipped: Pedometer returned 0 steps');
     });
 
     test('runBackgroundSyncTask - steps sync api throws gracefully', () async {
