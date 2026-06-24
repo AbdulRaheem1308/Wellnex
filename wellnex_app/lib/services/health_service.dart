@@ -2,8 +2,16 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:health/health.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'pedometer_service.dart';
 
-/// Service that bridges HealthKit (iOS) and Google Health Connect (Android).
+/// Service that bridges the hardware pedometer (Android) and Apple HealthKit (iOS).
+///
+/// On Android, step data is read directly from the phone's built-in
+/// TYPE_STEP_COUNTER sensor via [PedometerService] — no third-party app
+/// installation required.
+///
+/// On iOS, steps are read from Apple HealthKit which is always available
+/// natively without any extra installations.
 ///
 /// Use [requestAuthorization] before any data-fetch calls.
 class HealthService {
@@ -66,32 +74,24 @@ class HealthService {
 
   /// Requests access to health data.
   ///
-  /// On Android, also requests the `activityRecognition` permission first.
-  /// Returns `true` if authorization was granted.
+  /// On Android, requests the `activityRecognition` permission via
+  /// [PedometerService]. On iOS, requests HealthKit authorisation.
+  /// Returns `true` if authorisation was granted.
   Future<bool> requestAuthorization() async {
-    await _ensureConfigured();
     if (defaultTargetPlatform == TargetPlatform.android) {
-      PermissionStatus status;
+      // Pedometer only needs ACTIVITY_RECOGNITION — handled inside PedometerService.
       try {
-        status = await Permission.activityRecognition.request();
-      } catch (_) {
-        // Retry once if another concurrent request interfered.
-        await Future<void>.delayed(const Duration(seconds: 1));
-        try {
-          status = await Permission.activityRecognition.request();
-        } catch (e) {
-          debugPrint('HealthService: Activity recognition permission error: $e');
-          return false;
-        }
-      }
-      if (status != PermissionStatus.granted) {
+        final status = await Permission.activityRecognition.request();
+        return status == PermissionStatus.granted;
+      } catch (e) {
+        debugPrint('HealthService: Activity recognition permission error: $e');
         return false;
       }
     }
-
+    // iOS — request HealthKit authorisation.
+    await _ensureConfigured();
     try {
-      return await _health.requestAuthorization(_types,
-          permissions: _permissions);
+      return await _health.requestAuthorization(_types, permissions: _permissions);
     } catch (e) {
       debugPrint('HealthService: Authorization error: $e');
       return false;
@@ -101,7 +101,15 @@ class HealthService {
   // ── Step Queries ──────────────────────────────────────────────────────────
 
   /// Returns the total step count for today (midnight → now).
+  ///
+  /// On Android, delegates to [PedometerService] which reads the hardware
+  /// step counter directly — no Health Connect required.
+  /// On iOS, reads from Apple HealthKit.
   Future<int> getTodaySteps() async {
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return PedometerService().getCurrentSteps();
+    }
+    // iOS — HealthKit
     await _ensureConfigured();
     final now = DateTime.now();
     final midnight = DateTime(now.year, now.month, now.day);

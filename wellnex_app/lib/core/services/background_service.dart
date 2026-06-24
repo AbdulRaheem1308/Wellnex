@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io';
 import '../../services/health_service.dart';
+import '../../services/pedometer_service.dart';
 import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
 import 'package:uuid/uuid.dart';
@@ -69,28 +70,28 @@ class BackgroundService {
           debugPrint("Background Sync Device Reg Error: $deviceRegErr");
         }
 
-        // 3. Fetch Steps — Health API only (OS-managed, no baseline issues).
-        // Health API reads the phone's built-in step counter chip via Google
-        // Health Connect (Android) or Apple HealthKit (iOS). No external
-        // device is required. External wearables (Fitbit, Apple Watch, etc.)
-        // contribute additional data automatically if connected.
+        // 3. Fetch Steps
+        // Android: read directly from the hardware pedometer sensor —
+        //   no Health Connect or external app needed.
+        // iOS: read from Apple HealthKit (always available natively).
         int steps = 0;
-        String source = 'BACKGROUND_HEALTH_API';
+        String source = Platform.isAndroid ? 'BACKGROUND_PEDOMETER' : 'BACKGROUND_HEALTH_API';
 
         try {
-          final authorized = await healthService.requestAuthorization();
-          if (authorized) {
-            steps = await healthService.getTodaySteps();
+          if (Platform.isAndroid) {
+            steps = await PedometerService().getCurrentSteps();
+          } else {
+            final authorized = await healthService.requestAuthorization();
+            if (authorized) {
+              steps = await healthService.getTodaySteps();
+            }
           }
         } catch (e) {
-          debugPrint("Background Sync Health API Error: $e");
+          debugPrint("Background Sync Step Error: $e");
         }
 
         if (steps == 0) {
-          // Health API unavailable (permission not granted yet).
-          // Skip sync — do not fall back to raw pedometer sensor to avoid
-          // the cumulative-baseline bug that inflated step counts.
-          await prefs.setString('bg_sync_status', 'Skipped: Health API returned 0 (permission may be pending)');
+          await prefs.setString('bg_sync_status', 'Skipped: Pedometer returned 0 steps');
           return true;
         }
 

@@ -140,21 +140,6 @@ class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScree
     try {
       final healthService = HealthService();
 
-      if (Theme.of(context).platform == TargetPlatform.android) {
-        final isAvailable = await healthService.isHealthConnectAvailable();
-        if (!isAvailable) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Health Connect is not available on this device.')),
-          );
-          setState(() {
-            _healthAuthorized = false;
-            _healthStepsToday = -99;
-          });
-          return;
-        }
-      }
-
       final isAuthorized = await healthService.requestAuthorization();
       setState(() => _healthAuthorized = isAuthorized);
       if (isAuthorized) {
