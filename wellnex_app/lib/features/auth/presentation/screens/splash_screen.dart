@@ -17,6 +17,11 @@ class SplashScreen extends StatefulWidget {
   @visibleForTesting
   static Duration? testSplashDelay;
 
+  /// Override [resolveStartRoute] in tests to inject custom routing logic
+  /// (including throwing functions) without modifying real storage.
+  @visibleForTesting
+  static Future<String> Function()? testResolveStartRouteOverride;
+
   /// Determines which route the splash screen should navigate to based on the
   /// current auth/onboarding state. Extracted for unit-testability.
   @visibleForTesting
@@ -54,7 +59,7 @@ class _SplashScreenState extends State<SplashScreen> {
       if (!mounted) return;
 
       try {
-        final route = await SplashScreen.resolveStartRoute();
+        final route = await (SplashScreen.testResolveStartRouteOverride ?? SplashScreen.resolveStartRoute)();
         if (mounted) context.go(route);
       } catch (e) {
         debugPrint('Splash Screen: Error during auth check: $e');
