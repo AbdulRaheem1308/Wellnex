@@ -24,7 +24,7 @@ class HeroProgressCard extends StatelessWidget {
       items: const [
         ExplainerItem(
           title: 'Secure Background Sync',
-          description: 'Steps are synced securely from your phone\'s native health app (Health Connect/Apple Health).',
+          description: 'Steps are synced securely from your phone\'s native health app.',
           icon: Icons.security,
         ),
         ExplainerItem(

@@ -38,23 +38,7 @@ class _DeviceSyncScreenState extends ConsumerState<DeviceSyncScreen> {
     try {
       final health = HealthService();
       
-      if (Theme.of(context).platform == TargetPlatform.android) {
-        final isAvailable = await health.isHealthConnectAvailable();
-        if (!isAvailable) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Health Connect is not available on this device.')),
-            );
-            setState(() {
-              _healthAuthorized = false;
-              _todaySteps = 0;
-              _loading = false;
-            });
-          }
-          return;
-        }
-      }
-
+      // No Health Connect check needed for Android pedometer.
       final authorized = await health.requestAuthorization();
       final steps = authorized ? await health.getTodaySteps() : 0;
       if (mounted) {
@@ -72,18 +56,13 @@ class _DeviceSyncScreenState extends ConsumerState<DeviceSyncScreen> {
   Future<void> _openHealthApp() async {
     try {
       if (Platform.isAndroid) {
-        // Open Health Connect app
-        const platform = MethodChannel('wellnex/health');
+        // Open app settings to manage Physical Activity permissions
         try {
-          await platform.invokeMethod('openHealthConnect');
-        } catch (_) {
-          // Fallback: open Play Store Health Connect page
-          const url = 'market://details?id=com.google.android.apps.healthdata';
           await SystemChannels.platform.invokeMethod(
             'url_launcher/launch',
-            {'url': url},
+            {'url': 'app-settings:'},
           );
-        }
+        } catch (_) {}
       } else if (Platform.isIOS) {
         // Open Apple Health via URL scheme
         try {
@@ -149,7 +128,7 @@ class _DeviceSyncScreenState extends ConsumerState<DeviceSyncScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Your wearable steps flow into Wellnex automatically once connected to ${isAndroid ? "Health Connect" : "Apple Health"}.',
+                  'Your wearable steps flow into Wellnex automatically once connected to ${isAndroid ? "your phone" : "Apple Health"}.',
                   style: TextStyle(fontSize: 13, color: AppTheme.neutral500),
                 ),
                 const SizedBox(height: 12),
@@ -187,62 +166,13 @@ class _DeviceSyncScreenState extends ConsumerState<DeviceSyncScreen> {
     if (isAndroid) {
       return [
         _WearableGuide(
-          brand: 'Fitbit',
+          brand: 'Wearables (Fitbit, Garmin, Galaxy Watch)',
           icon: Icons.watch_rounded,
-          iconColor: const Color(0xFF00B0B9),
+          iconColor: AppTheme.secondaryBlue,
           steps: [
-            'Install the Fitbit app from the Play Store.',
-            'Log in to your Fitbit account.',
-            'In the Fitbit app, go to Today tab → Profile → App Gallery.',
-            'Open Fitbit app settings → tap Health Connect.',
-            'Enable "Sync with Health Connect" and grant all permissions.',
-            'Fitbit will now automatically sync your steps to Health Connect, and Wellnex will read from there.',
-          ],
-        ),
-        _WearableGuide(
-          brand: 'Garmin',
-          icon: Icons.gps_fixed_rounded,
-          iconColor: const Color(0xFF006EBB),
-          steps: [
-            'Install the Garmin Connect app from the Play Store.',
-            'Pair your Garmin device to the app via Bluetooth.',
-            'In Garmin Connect, go to More → Settings → Health Snapshot.',
-            'Go to More → Connected Apps → Health Connect.',
-            'Enable the connection and grant step, distance, and calorie permissions.',
-            'Garmin steps will now appear in Health Connect automatically.',
-          ],
-        ),
-        _WearableGuide(
-          brand: 'Samsung (Galaxy Watch)',
-          icon: Icons.watch_outlined,
-          iconColor: const Color(0xFF1428A0),
-          steps: [
-            'Open the Samsung Health app on your phone.',
-            'Go to Profile → Connected Services.',
-            'Tap Health Connect → Connect.',
-            'Grant all the health permissions shown.',
-            'Samsung Health will now sync your Galaxy Watch steps into Health Connect.',
-          ],
-        ),
-        _WearableGuide(
-          brand: 'Google (Pixel Watch / WearOS)',
-          icon: Icons.android_rounded,
-          iconColor: const Color(0xFF4285F4),
-          steps: [
-            'Your Pixel Watch or WearOS watch automatically syncs with Health Connect via the Wear OS app.',
-            'Open the Wear OS app on your phone.',
-            'Go to Settings → Health Connect → Verify it is connected.',
-            'No extra steps needed — it works automatically once the watch is paired.',
-          ],
-        ),
-        _WearableGuide(
-          brand: 'Apple Watch (via iPhone)',
-          icon: Icons.apple_rounded,
-          iconColor: Colors.black87,
-          steps: [
-            'Apple Watch step data is stored in Apple Health, not Android Health Connect.',
-            'To use Apple Watch steps on Android is not directly supported.',
-            'Consider exporting your Apple Health data and importing it manually, or use a third-party sync app like "Health Sync" from the Play Store.',
+            'Currently, Wellnex reads directly from your phone\'s built-in step counter.',
+            'Direct integration with Fitbit, Garmin, and Samsung Health via their cloud APIs is coming soon.',
+            'For now, please keep your phone with you to track your daily steps accurately.',
           ],
         ),
       ];
@@ -317,7 +247,7 @@ class _StatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final platform = isAndroid ? 'Google Health Connect' : 'Apple Health';
+    final platform = isAndroid ? 'Built-in Pedometer' : 'Apple Health';
     final platformIcon = isAndroid ? Icons.android_rounded : Icons.apple_rounded;
 
     return Container(
@@ -413,7 +343,7 @@ class _StatusCard extends StatelessWidget {
             OutlinedButton.icon(
               onPressed: onOpenHealthApp,
               icon: const Icon(Icons.open_in_new_rounded, size: 16),
-              label: Text('Open $platform'),
+              label: Text(isAndroid ? 'Open App Settings' : 'Open $platform'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppTheme.primaryGreen,
                 side: BorderSide(color: AppTheme.primaryGreen.withValues(alpha: 0.5)),
@@ -505,10 +435,10 @@ class _HowItWorksCard extends StatelessWidget {
           const _ArrowDivider(),
           _HowItWorksStep(
             number: '2',
-            icon: isAndroid ? Icons.android_rounded : Icons.apple_rounded,
-            title: isAndroid ? 'Health Connect aggregates' : 'Apple Health aggregates',
+            icon: isAndroid ? Icons.directions_walk_rounded : Icons.apple_rounded,
+            title: isAndroid ? 'Direct Sensor Access' : 'Apple Health aggregates',
             subtitle: isAndroid
-                ? 'Google Health Connect collects steps from your phone and any connected wearables into one daily total.'
+                ? 'Your device continuously monitors movement using its low-power accelerometer to calculate your steps natively.'
                 : 'Apple Health collects steps from your iPhone and Apple Watch into one accurate daily total.',
             color: AppTheme.secondaryBlue,
           ),
@@ -733,7 +663,7 @@ class _TipCard extends StatelessWidget {
           Expanded(
             child: Text(
               isAndroid
-                  ? 'Tip: Make sure Health Connect is installed on your phone (Android 14+ includes it by default). If steps are missing, open Health Connect and verify that your wearable app has been granted step permissions.'
+                  ? 'Tip: The built-in pedometer works best when the phone is in your pocket. Steps are synced even when the app is completely closed.'
                   : 'Tip: If steps from your Apple Watch are not appearing, open the Health app → Sources → and make sure your watch is listed and all categories are enabled.',
               style: TextStyle(fontSize: 13, color: AppTheme.secondaryBlue, height: 1.4),
             ),

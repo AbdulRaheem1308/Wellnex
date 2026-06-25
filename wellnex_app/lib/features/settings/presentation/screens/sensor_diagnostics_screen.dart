@@ -282,7 +282,7 @@ class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScree
                   children: [
                     _buildDiagnosticRow(
                       'Health API Source',
-                      'Google Health Connect (Android) / Apple HealthKit (iOS)',
+                      'Built-in Pedometer (Android) / Apple HealthKit (iOS)',
                       true,
                     ),
                     _buildDiagnosticRow(

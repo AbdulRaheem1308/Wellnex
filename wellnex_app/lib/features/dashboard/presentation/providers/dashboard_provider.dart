@@ -1,13 +1,16 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import 'package:safe_device/safe_device.dart';
 import 'dart:math';
 
+import 'package:wellnex_app/services/pedometer_service.dart';
+import 'package:wellnex_app/services/health_service.dart';
 import '../../../../services/api_service.dart';
 import '../../../../services/storage_service.dart';
-import 'package:wellnex_app/services/health_service.dart';
 import 'package:wellnex_app/features/devices/presentation/providers/device_provider.dart';
 
 /// Dashboard state model
@@ -301,21 +304,49 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
   void initHealthPolling() {
     _uiBatchTimer?.cancel();
 
-    // Request Health authorization and start periodic polling.
-    // Polling every 15 seconds gives near-real-time updates without
-    // draining battery — Health API is OS-cached so each call is cheap.
     Future.microtask(() async {
       final authorized = await _healthService.requestAuthorization();
       state = state.copyWith(healthAuthorized: authorized);
+      
       if (authorized) {
         // Immediate first poll
         await _pollHealthApiSteps();
+        
+        // On Android, we need to actively listen to the hardware pedometer stream
+        // so that it continually updates storage and we don't miss steps.
+        if (defaultTargetPlatform == TargetPlatform.android && !Platform.environment.containsKey('FLUTTER_TEST')) {
+          PedometerService().startListening(
+            onStepsChanged: (steps) {
+              if (!mounted) return;
+              _checkDayRollover();
+              
+              final now = DateTime.now();
+              if (_lastStepTime != null && steps > _lastHealthApiSteps) {
+                final stepDiff = steps - _lastHealthApiSteps;
+                final timeDiff = now.difference(_lastStepTime!);
+                int addedSeconds = (stepDiff / 100 * 60).round();
+                if (addedSeconds > timeDiff.inSeconds) addedSeconds = timeDiff.inSeconds;
+                if (addedSeconds < 0) addedSeconds = 0;
+                _accumulatedActiveSeconds += addedSeconds;
+              }
+              _lastStepTime = now;
+              _lastHealthApiSteps = steps;
+              state = state.copyWith(sensorStepsToday: steps);
+              syncSteps(steps);
+            },
+            onErrorOccurred: (err) => debugPrint('Pedometer stream error: $err'),
+          );
+        }
       }
     });
 
     _uiBatchTimer = Timer.periodic(const Duration(seconds: 15), (timer) async {
       _checkDayRollover();
-      await _pollHealthApiSteps();
+      // On Android, the PedometerService stream handles live updates.
+      // We still poll for iOS HealthKit (or as a fallback).
+      if (defaultTargetPlatform != TargetPlatform.android) {
+        await _pollHealthApiSteps();
+      }
     });
   }
 
