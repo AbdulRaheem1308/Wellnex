@@ -331,4 +331,34 @@ describe("UsersService", () => {
       expect(res).toBe("beginner");
     });
   });
+  it("rejects adding or replacing login identities through profile edits", async () => {
+    jest.spyOn(service, "findById").mockResolvedValue({
+      id: "u1",
+      phone: "+919876543210",
+      email: "owner@example.invalid",
+    } as any);
+    await expect(
+      service.update("u1", { email: "victim@example.invalid" }),
+    ).rejects.toThrow("separate verified identity flow");
+    await expect(
+      service.update("u1", { phone: "+919999999999" }),
+    ).rejects.toThrow("separate verified identity flow");
+    expect(mockPrisma.user.update).not.toHaveBeenCalled();
+  });
+  it("allows profile saves that repeat existing identities without writing identity columns", async () => {
+    jest.spyOn(service, "findById").mockResolvedValue({
+      id: "u1",
+      phone: "+919876543210",
+      email: "Owner@Example.Invalid",
+    } as any);
+    mockPrisma.user.update.mockResolvedValue({ id: "u1" });
+    await service.update("u1", {
+      name: "Owner",
+      email: "owner@example.invalid",
+      phone: "+919876543210",
+    });
+    const call = mockPrisma.user.update.mock.calls.at(-1)[0];
+    expect(call.data).not.toHaveProperty("email");
+    expect(call.data).not.toHaveProperty("phone");
+  });
 });

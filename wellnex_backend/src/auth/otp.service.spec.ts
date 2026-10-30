@@ -232,6 +232,31 @@ describe("OtpService", () => {
         );
       });
 
+      it("uses Brevo when Resend resolves with an error", async () => {
+        mockConfigService.get.mockImplementation((key: string) =>
+          key === "RESEND_API_KEY" || key === "BREVO_API_KEY"
+            ? "offline-test"
+            : null,
+        );
+        const sender = new OtpService(mockConfigService);
+        (sender as any).resendClient.emails.send.mockResolvedValue({
+          data: null,
+          error: { message: "rejected" },
+        });
+        (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+        await sender.sendEmailOtp("test@example.invalid", "123456");
+        expect(global.fetch).toHaveBeenCalled();
+      });
+      it("supports a Brevo-only configuration", async () => {
+        mockConfigService.get.mockImplementation((key: string) =>
+          key === "BREVO_API_KEY" ? "offline-test" : null,
+        );
+        const sender = new OtpService(mockConfigService);
+        (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+        await sender.sendEmailOtp("test@example.invalid", "123456");
+        expect(global.fetch).toHaveBeenCalled();
+      });
+
       it("should log email OTP to console if no resend client", async () => {
         await service.sendEmailOtp("test@test.com", "555555");
         expect(loggerLogSpy).toHaveBeenCalledWith("Code: 555555");

@@ -5,13 +5,18 @@ on:
     branches: [ "main" ]
     paths:
       - 'wellnex_backend/**'
+      - 'wellnex_admin/backend/**'
       - '.github/workflows/backend-ci.yml'
   pull_request:
     branches: [ "main" ]
     paths:
       - 'wellnex_backend/**'
+      - 'wellnex_admin/backend/**'
       - '.github/workflows/backend-ci.yml'
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build-and-test:
@@ -59,6 +64,7 @@ jobs:
       JWT_EXPIRY: 15m
       JWT_REFRESH_EXPIRY: 7d
       NODE_ENV: test
+      SECURITY_TEST_REDIS_URL: redis://localhost:6379/15
       OTP_EXPIRY_MINUTES: 5
       OTP_LENGTH: 6
       POINTS_PER_STEP: 0.1
@@ -77,6 +83,9 @@ jobs:
         cache: 'npm'
         cache-dependency-path: './wellnex_backend/package-lock.json'
 
+    - name: Check Source Credentials
+      run: node scripts/check-source-secrets.cjs
+
     - name: Install dependencies
       run: npm ci
 
@@ -91,11 +100,20 @@ jobs:
 
     - name: Run Unit & E2E Tests with Coverage
       run: |
+        node --test test/smtp-config.test.cjs
         npm run test:cov
         npm run test:e2e -- --passWithNoTests
 
     - name: Build Backend
       run: npm run build
+
+    - name: Test and Build Admin Backend
+      working-directory: ./wellnex_admin/backend
+      run: |
+        npm ci
+        npx prisma generate
+        node --test test/auth.test.cjs
+        npm run build
 
     - name: SonarCloud Scan
       uses: SonarSource/sonarqube-scan-action@v5.0.0
@@ -107,6 +125,9 @@ jobs:
         projectBaseDir: wellnex_backend
 
   deploy:
+    concurrency:
+      group: wellnex-production-deployment
+      cancel-in-progress: false
     needs: build-and-test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -118,7 +139,10 @@ jobs:
           username: ${{ secrets.OCI_USERNAME }}
           key: ${{ secrets.OCI_SSH_KEY }}
           script: |
+            set -eu
             cd ~/wellnex/source
-            git pull origin main
+            test -z "$(git status --porcelain --untracked-files=no)"
+            git fetch origin main
+            git checkout --detach "${{ github.sha }}"
             cd ~/wellnex
             docker compose up -d --build

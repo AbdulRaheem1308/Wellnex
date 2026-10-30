@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import * as admin from "firebase-admin";
 import { Resend } from "resend";
@@ -271,7 +271,7 @@ export class NotificationsService {
    * Send an Email Notification
    */
   async sendEmail(to: string, subject: string, html: string): Promise<boolean> {
-    if (!this.resendClient) {
+    if (!this.resendClient && !this.brevoApiKey) {
       this.logger.debug(
         `Email not sent to ${to} (Resend API key not configured)`,
       );
@@ -279,12 +279,14 @@ export class NotificationsService {
     }
 
     try {
-      await this.resendClient.emails.send({
+      if (!this.resendClient) throw new Error("Resend is not configured");
+      const result = await this.resendClient.emails.send({
         from: "Wellnex <no-reply@joinwellnex.com>",
         to,
         subject,
         html,
       });
+      if (result?.error) throw new Error("Resend rejected the email");
       this.logger.log(`Email sent successfully to ${to} via Resend`);
       return true;
     } catch (error: any) {
@@ -398,18 +400,22 @@ export class NotificationsService {
       return { success: true };
     }
 
-    await this.prisma.notification.update({
-      where: { id: notificationId },
+    const result = await this.prisma.notification.updateMany({
+      where: { id: notificationId, userId },
       data: { isRead: true },
     });
+    if (result.count !== 1)
+      throw new NotFoundException("Notification not found");
     return { success: true };
   }
 
   // Delete notification
   async deleteNotification(userId: string, notificationId: string) {
-    await this.prisma.notification.delete({
-      where: { id: notificationId },
+    const result = await this.prisma.notification.deleteMany({
+      where: { id: notificationId, userId },
     });
+    if (result.count !== 1)
+      throw new NotFoundException("Notification not found");
     return { success: true };
   }
 }

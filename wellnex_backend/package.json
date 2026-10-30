@@ -6,7 +6,7 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-    "build": "npm install --include=dev && nest build",
+    "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
@@ -41,8 +41,8 @@
     "@nestjs/throttler": "^6.4.0",
     "@nestjs/websockets": "^11.1.21",
     "@opentelemetry/api": "^1.9.1",
-    "@opentelemetry/auto-instrumentations-node": "^0.76.0",
-    "@opentelemetry/sdk-node": "^0.218.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.81.2",
+    "@opentelemetry/sdk-node": "^0.223.0",
     "@prisma/client": "^5.7.1",
     "@sentry/nestjs": "^10.53.1",
     "@types/node-cron": "^3.0.11",
@@ -118,5 +118,8 @@
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
+  },
+  "overrides": {
+    "multer": "^2.5.0"
   }
 }

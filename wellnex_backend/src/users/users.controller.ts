@@ -8,6 +8,7 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
+import { AdminApiKeyGuard } from "../auth/guards/admin-api-key.guard";
 import { UsersService } from "./users.service";
 import {
   UpdateUserDto,
@@ -113,6 +114,7 @@ export class UsersController {
   /**
    * Initialize achievements for all existing users (one-time migration)
    */
+  @UseGuards(AdminApiKeyGuard)
   @Post("init-achievements")
   @ApiOperation({
     summary: "Initialize achievements for all users (Admin/Dev)",

@@ -51,17 +51,14 @@ export class AuthService {
   async sendOtp(
     dto: SendOtpDto,
   ): Promise<{ message: string; expiresIn: number }> {
-    const identifier = dto.phone || dto.email;
-    if (!identifier) {
-      throw new BadRequestException("Phone or email is required");
-    }
+    const { identifier, phone, email } = this.otpIdentity(dto);
 
     // Check login cooldown
     const canLogin = await this.redis.checkLoginCooldown(identifier);
     if (!canLogin) {
       throw new HttpException(
         "Please wait 20 seconds before logging back in.",
-        HttpStatus.TOO_MANY_REQUESTS
+        HttpStatus.TOO_MANY_REQUESTS,
       );
     }
 
@@ -83,14 +80,14 @@ export class AuthService {
     await this.redis.setOtp(identifier, otp, expiryMinutes);
 
     // Send OTP via Twilio/Email
-    if (dto.phone) {
-      await this.otpService.sendSmsOtp(dto.phone, otp);
-    } else if (dto.email) {
-      await this.otpService.sendEmailOtp(dto.email, otp);
+    if (phone) {
+      await this.otpService.sendSmsOtp(phone, otp);
+    } else if (email) {
+      await this.otpService.sendEmailOtp(email, otp);
     }
 
     return {
-      message: `OTP sent to ${dto.phone ? "phone" : "email"}`,
+      message: `OTP sent to ${phone ? "phone" : "email"}`,
       expiresIn: expiryMinutes * 60,
     };
   }
@@ -101,24 +98,12 @@ export class AuthService {
   async verifyOtp(
     dto: VerifyOtpDto,
   ): Promise<{ tokens: AuthTokens; user: any; isNewUser: boolean }> {
-    const identifier = dto.phone || dto.email;
-    if (!identifier) {
-      throw new BadRequestException("Phone or email is required");
-    }
+    const { identifier, phone, email } = this.otpIdentity(dto);
 
-    // Get stored OTP
-    const storedOtp = await this.redis.getOtp(identifier);
-    if (!storedOtp) {
-      throw new UnauthorizedException("OTP expired or not found");
+    // Verify, cap attempts, and consume in one atomic operation.
+    if (!(await this.redis.consumeOtp(identifier, dto.otp))) {
+      throw new UnauthorizedException("Invalid or expired OTP");
     }
-
-    // Verify OTP
-    if (storedOtp !== dto.otp) {
-      throw new UnauthorizedException("Invalid OTP");
-    }
-
-    // Delete used OTP
-    await this.redis.deleteOtp(identifier);
 
     // Find or create user
     let user = await this.usersService.findByIdentifier(identifier);
@@ -126,8 +111,8 @@ export class AuthService {
 
     if (!user) {
       user = await this.usersService.create({
-        phone: dto.phone,
-        email: dto.email,
+        phone,
+        email,
         referredBy: dto.referralCode,
       });
       isNewUser = true;
@@ -170,7 +155,8 @@ export class AuthService {
       `🔴 [loginWithSocial] Firebase verification successful. Decoded keys: ${Object.keys(decodedToken).join(", ")}`,
     );
 
-    const { email, name } = decodedToken;
+    const { name } = decodedToken;
+    const email = decodedToken.email?.trim().toLowerCase();
 
     if (!email) {
       this.logger.log("🔴 [loginWithSocial] Error: No email in token");
@@ -179,12 +165,16 @@ export class AuthService {
       );
     }
 
+    if (decodedToken.email_verified !== true) {
+      throw new UnauthorizedException("Social account email must be verified");
+    }
+
     // Check login cooldown
     const canLogin = await this.redis.checkLoginCooldown(email);
     if (!canLogin) {
       throw new HttpException(
         "Please wait 20 seconds before logging back in.",
-        HttpStatus.TOO_MANY_REQUESTS
+        HttpStatus.TOO_MANY_REQUESTS,
       );
     }
 
@@ -286,10 +276,25 @@ export class AuthService {
     }
   }
 
+  private otpIdentity(dto: { phone?: string; email?: string }) {
+    if (Boolean(dto.phone) === Boolean(dto.email)) {
+      throw new BadRequestException("Provide exactly one phone or email");
+    }
+    const phone = dto.phone?.trim();
+    const email = dto.email?.trim().toLowerCase();
+    const identifier = phone || email;
+    if (!identifier)
+      throw new BadRequestException("Phone or email is required");
+    return { identifier, phone, email };
+  }
+
   /**
    * Generate access and refresh tokens
    */
   private async generateTokens(user: any): Promise<AuthTokens> {
+    if (user.isActive === false) {
+      throw new UnauthorizedException("Account is inactive");
+    }
     const payload: JwtPayload = {
       sub: user.id,
       phone: user.phone,
