@@ -87,10 +87,11 @@ export class OtpService {
   }
 
   async sendEmailOtp(email: string, otp: string): Promise<void> {
-    if (this.resendClient) {
+    if (this.resendClient || this.brevoApiKey) {
       try {
         const fromEmail = "Wellnex <no-reply@joinwellnex.com>";
-        await this.resendClient.emails.send({
+        if (!this.resendClient) throw new Error("Resend is not configured");
+        const result = await this.resendClient.emails.send({
           from: fromEmail,
           to: email,
           subject: "Your Wellnex OTP Verification Code",
@@ -109,6 +110,7 @@ export class OtpService {
             </div>
           `,
         });
+        if (result?.error) throw new Error("Resend rejected the email");
         this.logger.log(`OTP sent via email to ${email}`);
       } catch (error: any) {
         this.logger.warn(

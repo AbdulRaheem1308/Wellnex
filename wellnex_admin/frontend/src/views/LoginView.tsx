@@ -140,7 +140,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ apiKey, setApiKey, onLogin
           borderTop: "1px solid var(--border-color)",
           paddingTop: "16px"
         }}>
-          Default sandbox key: <code style={{ backgroundColor: "rgba(255, 255, 255, 0.04)", padding: "2px 6px", borderRadius: "4px", fontFamily: "monospace", color: "#06b6d4" }}>fallback-secret-admin-key-2026</code>
+          Use the administrator access key provided through your secure team channel.
         </div>
       </div>
     </div>

@@ -38,27 +38,10 @@ describe("JwtStrategy", () => {
     expect(strategy).toBeDefined();
   });
 
-  it("should fallback to fallback_secret if JWT_SECRET not found", async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        JwtStrategy,
-        {
-          provide: ConfigService,
-          useValue: {
-            get: jest.fn(() => null),
-          },
-        },
-        {
-          provide: AuthService,
-          useValue: {
-            validateUser: jest.fn(),
-          },
-        },
-      ],
-    }).compile();
-
-    const fallbackStrategy = module.get<JwtStrategy>(JwtStrategy);
-    expect(fallbackStrategy).toBeDefined();
+  it("rejects startup without a configured signing secret", () => {
+    expect(
+      () => new JwtStrategy({ get: () => undefined } as any, {} as any),
+    ).toThrow("JWT_SECRET is required");
   });
 
   describe("validate", () => {

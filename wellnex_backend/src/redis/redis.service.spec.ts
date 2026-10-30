@@ -19,6 +19,7 @@ jest.mock("ioredis", () => {
       get: jest.fn(),
       del: jest.fn().mockResolvedValue(1),
       incr: jest.fn(),
+      eval: jest.fn(),
       expire: jest.fn().mockResolvedValue(1),
       exists: jest.fn(),
       ttl: jest.fn(),
@@ -245,36 +246,80 @@ describe("RedisService", () => {
   });
 
   describe("Rate Limiting", () => {
-    it("should allow if count <= 5", async () => {
-      mockClient.incr.mockResolvedValue(1);
-      const res = await service.checkOtpRateLimit("test");
-      expect(mockClient.expire).toHaveBeenCalledWith("otp_rate:test", 3600);
-      expect(res).toBe(true);
+    it("uses one quota for Gmail mailbox aliases", async () => {
+      mockClient.eval.mockResolvedValue(1);
+      await service.checkOtpRateLimit("U.ser+tag@googlemail.com");
+      expect(mockClient.eval).toHaveBeenCalledWith(
+        expect.any(String),
+        2,
+        "otp_rate:user@gmail.com",
+        "otp_send_cooldown:user@gmail.com",
+      );
     });
-
-    it("should allow if count <= 5 and > 1", async () => {
-      mockClient.incr.mockResolvedValue(2);
-      const res = await service.checkOtpRateLimit("test");
-      expect(mockClient.expire).not.toHaveBeenCalled();
-      expect(res).toBe(true);
+    it("uses an atomic shared quota and cooldown", async () => {
+      mockClient.eval.mockResolvedValue(1);
+      expect(await service.checkOtpRateLimit("test")).toBe(true);
+      expect(mockClient.eval).toHaveBeenCalledWith(
+        expect.any(String),
+        2,
+        "otp_rate:test",
+        "otp_send_cooldown:test",
+      );
     });
-
-    it("should fail if count > 5", async () => {
-      mockClient.incr.mockResolvedValue(6);
-      const res = await service.checkOtpRateLimit("test");
-      expect(res).toBe(false);
+    it("rejects when quota or cooldown denies the request", async () => {
+      mockClient.eval.mockResolvedValue(0);
+      expect(await service.checkOtpRateLimit("test")).toBe(false);
     });
-
-    it("should fail open if redis is not connected", async () => {
+    it("fails closed when Redis is disconnected", async () => {
       mockClient.status = "connecting";
-      const res = await service.checkOtpRateLimit("test");
-      expect(res).toBe(true);
+      expect(await service.checkOtpRateLimit("test")).toBe(false);
+      expect(mockClient.eval).not.toHaveBeenCalled();
     });
+    it("fails closed when Redis errors", async () => {
+      mockClient.eval.mockRejectedValue(new Error("unavailable"));
+      expect(await service.checkOtpRateLimit("test")).toBe(false);
+    });
+  });
 
-    it("should fail open if redis throws", async () => {
-      mockClient.incr.mockRejectedValue(new Error("error"));
-      const res = await service.checkOtpRateLimit("test");
-      expect(res).toBe(true);
+  describe("atomic OTP consumption", () => {
+    it("delegates comparison and deletion to one Redis operation", async () => {
+      mockClient.eval.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
+      expect(await service.consumeOtp("user", "123456")).toBe(true);
+      expect(await service.consumeOtp("user", "123456")).toBe(false);
+      expect(mockClient.get).not.toHaveBeenCalled();
+      expect(mockClient.eval).toHaveBeenCalledWith(
+        expect.any(String),
+        2,
+        "otp:user",
+        "otp_attempts:user",
+        "123456",
+      );
+    });
+    it("never accepts verification after a Redis error", async () => {
+      mockClient.eval.mockRejectedValueOnce(new Error("unavailable"));
+      await expect(service.consumeOtp("user", "123456")).rejects.toThrow(
+        "OTP service temporarily unavailable",
+      );
+    });
+    it("caps development-memory guesses and prevents replay", async () => {
+      mockClient.status = "end";
+      await service.setOtp("user", "123456", 5);
+      for (let i = 0; i < 5; i++)
+        expect(await service.consumeOtp("user", "wrong")).toBe(false);
+      expect(await service.consumeOtp("user", "123456")).toBe(false);
+      await service.setOtp("other", "123456", 5);
+      expect(await service.consumeOtp("other", "123456")).toBe(true);
+      expect(await service.consumeOtp("other", "123456")).toBe(false);
+    });
+    it("does not fall back to memory for production OTPs", async () => {
+      (service as any).isProduction = true;
+      mockClient.status = "end";
+      await expect(service.setOtp("user", "123456", 5)).rejects.toThrow(
+        "OTP service temporarily unavailable",
+      );
+      await expect(service.consumeOtp("user", "123456")).rejects.toThrow(
+        "OTP service temporarily unavailable",
+      );
     });
   });
 

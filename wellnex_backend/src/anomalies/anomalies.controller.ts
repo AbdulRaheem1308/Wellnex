@@ -1,6 +1,17 @@
-import { Controller, Post, Get, Body, Param, Patch, Query, UseGuards, Request } from '@nestjs/common';
-import { AnomaliesService } from './anomalies.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Param,
+  Patch,
+  Query,
+  UseGuards,
+  Request,
+} from "@nestjs/common";
+import { AdminApiKeyGuard } from "../auth/guards/admin-api-key.guard";
+import { AnomaliesService } from "./anomalies.service";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 
 @Controller()
 export class AnomaliesController {
@@ -11,15 +22,15 @@ export class AnomaliesController {
   // ============================================
 
   @UseGuards(JwtAuthGuard)
-  @Post('api/v1/anomalies/report')
+  @Post("api/v1/anomalies/report")
   async reportAnomaly(
     @Request() req: any,
     @Body() body: { description: string; metadata?: any },
   ) {
     return this.anomaliesService.createAnomaly(
       req.user.id,
-      'USER_REPORTED',
-      'MEDIUM', // user reported is medium severity by default
+      "USER_REPORTED",
+      "MEDIUM", // user reported is medium severity by default
       body.description,
       body.metadata,
     );
@@ -29,21 +40,23 @@ export class AnomaliesController {
   // ADMIN FACING
   // ============================================
 
-  @Get('api/admin/anomalies')
+  @UseGuards(AdminApiKeyGuard)
+  @Get("api/admin/anomalies")
   async getAnomalies(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-    @Query('status') status?: string,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
+    @Query("status") status?: string,
   ) {
-    const pageNum = parseInt(page || '1', 10);
-    const limitNum = parseInt(limit || '20', 10);
+    const pageNum = parseInt(page || "1", 10);
+    const limitNum = parseInt(limit || "20", 10);
     return this.anomaliesService.getAnomalies(pageNum, limitNum, status);
   }
 
-  @Patch('api/admin/anomalies/:id/status')
+  @UseGuards(AdminApiKeyGuard)
+  @Patch("api/admin/anomalies/:id/status")
   async updateAnomalyStatus(
-    @Param('id') id: string,
-    @Body('status') status: 'PENDING' | 'RESOLVED' | 'IGNORED',
+    @Param("id") id: string,
+    @Body("status") status: "PENDING" | "RESOLVED" | "IGNORED",
   ) {
     return this.anomaliesService.updateStatus(id, status);
   }

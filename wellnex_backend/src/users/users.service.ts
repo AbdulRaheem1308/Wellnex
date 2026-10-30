@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ConflictException } from "@nestjs/common";
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { RedisService } from "../redis/redis.service";
 import { CreateUserDto, UpdateUserDto } from "./dto/user.dto";
@@ -30,7 +35,10 @@ export class UsersService {
   async findByIdentifier(identifier: string) {
     return this.prisma.user.findFirst({
       where: {
-        OR: [{ phone: identifier }, { email: identifier }],
+        OR: [
+          { phone: identifier },
+          { email: { equals: identifier, mode: "insensitive" } },
+        ],
       },
       include: {
         wallet: true,
@@ -296,6 +304,17 @@ export class UsersService {
       throw new NotFoundException("User not found");
     }
 
+    // Ordinary profile editing cannot establish ownership of a new login identity.
+    if (
+      (dto.phone !== undefined && dto.phone !== user.phone) ||
+      (dto.email !== undefined &&
+        dto.email?.trim().toLowerCase() !== user.email?.trim().toLowerCase())
+    ) {
+      throw new BadRequestException(
+        "Changing phone or email requires a separate verified identity flow",
+      );
+    }
+
     // Auto-compute fitness level when physical stats change
     let fitnessLevel = dto.fitnessLevel;
     if (!fitnessLevel && (dto.heightCm || dto.weightKg || dto.dailyStepGoal)) {
@@ -304,8 +323,7 @@ export class UsersService {
 
     const updateData: any = {
       name: dto.name,
-      phone: dto.phone,
-      email: dto.email,
+      // Login identities remain unchanged by profile edits.
       heightCm: dto.heightCm,
       weightKg: dto.weightKg,
       age: dto.age,

@@ -1,3 +1,4 @@
+import { validateProductionConfig } from "./security/config";
 import { Module, Logger } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
@@ -45,8 +46,10 @@ import { SentryModule } from "@sentry/nestjs/setup";
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ".env",
+      ignoreEnvFile: process.env.NODE_ENV === "test",
+      validate: validateProductionConfig,
     }),
-    ScheduleModule.forRoot(),
+    ScheduleModule.forRoot({ cronJobs: process.env.WORKER_MODE !== "true" }),
     SentryModule.forRoot(),
 
     // Internationalization (i18n)

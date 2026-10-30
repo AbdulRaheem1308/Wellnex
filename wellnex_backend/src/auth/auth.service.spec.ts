@@ -36,6 +36,7 @@ const mockRedis = {
   checkLoginCooldown: jest.fn().mockResolvedValue(true),
   setOtp: jest.fn(),
   getOtp: jest.fn(),
+  consumeOtp: jest.fn(),
   deleteOtp: jest.fn(),
 };
 
@@ -149,21 +150,21 @@ describe("AuthService", () => {
     });
 
     it("should throw UnauthorizedException if OTP is expired or not found", async () => {
-      mockRedis.getOtp.mockResolvedValue(null);
+      mockRedis.consumeOtp.mockResolvedValue(false);
       await expect(
         service.verifyOtp({ phone: "+919876543210", otp: "123456" }),
       ).rejects.toThrow(UnauthorizedException);
     });
 
     it("should throw UnauthorizedException if OTP is incorrect", async () => {
-      mockRedis.getOtp.mockResolvedValue("654321");
+      mockRedis.consumeOtp.mockResolvedValue(false);
       await expect(
         service.verifyOtp({ phone: "+919876543210", otp: "123456" }),
       ).rejects.toThrow(UnauthorizedException);
     });
 
     it("should create new user and return tokens for first-time login", async () => {
-      mockRedis.getOtp.mockResolvedValue("123456");
+      mockRedis.consumeOtp.mockResolvedValue(true);
       mockRedis.deleteOtp.mockResolvedValue(true);
       mockUsers.findByIdentifier.mockResolvedValue(null);
       const mockUser = {
@@ -186,7 +187,7 @@ describe("AuthService", () => {
     });
 
     it("should return isNewUser=false for existing user with a name", async () => {
-      mockRedis.getOtp.mockResolvedValue("123456");
+      mockRedis.consumeOtp.mockResolvedValue(true);
       mockRedis.deleteOtp.mockResolvedValue(true);
       const existingUser = {
         id: "user-1",
@@ -207,7 +208,7 @@ describe("AuthService", () => {
     });
 
     it("should return isNewUser=true if existing user has no name (incomplete profile)", async () => {
-      mockRedis.getOtp.mockResolvedValue("123456");
+      mockRedis.consumeOtp.mockResolvedValue(true);
       mockRedis.deleteOtp.mockResolvedValue(true);
       const existingUser = {
         id: "user-1",
@@ -317,7 +318,7 @@ describe("AuthService", () => {
   // ── loginWithSocial ──────────────────────────────────────────────────────
   describe("loginWithSocial()", () => {
     it("should throw BadRequest if email missing from social token", async () => {
-      mockSocialAuth.verifyIdToken.mockResolvedValue({});
+      mockSocialAuth.verifyIdToken.mockResolvedValue({ email_verified: true });
       await expect(
         service.loginWithSocial({ idToken: "token" } as any),
       ).rejects.toThrow(BadRequestException);
@@ -325,9 +326,15 @@ describe("AuthService", () => {
 
     it("should return existing user and generate tokens", async () => {
       mockSocialAuth.verifyIdToken.mockResolvedValue({
+        email_verified: true,
         email: "test@apple.com",
       });
-      const mockUser = { id: "user-1", email: "test@apple.com", name: "Apple User", isProfileCreated: true };
+      const mockUser = {
+        id: "user-1",
+        email: "test@apple.com",
+        name: "Apple User",
+        isProfileCreated: true,
+      };
       mockUsers.findByIdentifier.mockResolvedValue(mockUser);
       mockPrisma.refreshToken.create.mockResolvedValue({});
 
@@ -338,9 +345,15 @@ describe("AuthService", () => {
 
     it("should return isNewUser=true if existing user has no name (incomplete profile)", async () => {
       mockSocialAuth.verifyIdToken.mockResolvedValue({
+        email_verified: true,
         email: "test@apple.com",
       });
-      const mockUser = { id: "user-1", email: "test@apple.com", name: null, isProfileCreated: false };
+      const mockUser = {
+        id: "user-1",
+        email: "test@apple.com",
+        name: null,
+        isProfileCreated: false,
+      };
       mockUsers.findByIdentifier.mockResolvedValue(mockUser);
       mockPrisma.refreshToken.create.mockResolvedValue({});
 
@@ -350,6 +363,7 @@ describe("AuthService", () => {
 
     it("should create new user, process referral, and return tokens", async () => {
       mockSocialAuth.verifyIdToken.mockResolvedValue({
+        email_verified: true,
         email: "new@apple.com",
         name: "Apple User",
       });
@@ -381,7 +395,7 @@ describe("AuthService", () => {
     it("should fail silently if referral code is invalid", async () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
       // We trigger this indirectly via verifyOtp for a new user
-      mockRedis.getOtp.mockResolvedValue("123456");
+      mockRedis.consumeOtp.mockResolvedValue(true);
       mockRedis.deleteOtp.mockResolvedValue(true);
       mockUsers.findByIdentifier.mockResolvedValue(null);
       mockUsers.create.mockResolvedValue({ id: "user-new" });
@@ -396,7 +410,7 @@ describe("AuthService", () => {
       mockPrisma.user.findUnique.mockResolvedValue({ id: "inviter-1" });
       mockPrisma.$transaction.mockRejectedValue(new Error("DB Error"));
 
-      mockRedis.getOtp.mockResolvedValue("123456");
+      mockRedis.consumeOtp.mockResolvedValue(true);
       mockRedis.deleteOtp.mockResolvedValue(true);
       mockUsers.findByIdentifier.mockResolvedValue(null);
       mockUsers.create.mockResolvedValue({ id: "user-new" });
@@ -410,6 +424,55 @@ describe("AuthService", () => {
           referralCode: "GOOD",
         }),
       ).resolves.toBeDefined();
+    });
+  });
+  describe("security regressions", () => {
+    it("rejects two identities before generating or consuming an OTP", async () => {
+      const dto = { phone: "+919876543210", email: "victim@example.invalid" };
+      await expect(service.sendOtp(dto)).rejects.toThrow(BadRequestException);
+      await expect(
+        service.verifyOtp({ ...dto, otp: "123456" }),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockOtp.generateOtp).not.toHaveBeenCalled();
+      expect(mockRedis.consumeOtp).not.toHaveBeenCalled();
+      expect(mockUsers.create).not.toHaveBeenCalled();
+    });
+    it("uses the same normalized email for quota, storage and delivery", async () => {
+      mockRedis.checkOtpRateLimit.mockResolvedValue(true);
+      await service.sendOtp({ email: "  User@Example.Invalid  " });
+      expect(mockRedis.checkOtpRateLimit).toHaveBeenCalledWith(
+        "user@example.invalid",
+      );
+      expect(mockRedis.setOtp).toHaveBeenCalledWith(
+        "user@example.invalid",
+        "123456",
+        5,
+      );
+      expect(mockOtp.sendEmailOtp).toHaveBeenCalledWith(
+        "user@example.invalid",
+        "123456",
+      );
+    });
+    it("rejects an unverified social email before linking an account", async () => {
+      mockSocialAuth.verifyIdToken.mockResolvedValue({
+        email: "victim@example.invalid",
+        email_verified: false,
+      });
+      await expect(
+        service.loginWithSocial({ idToken: "test" }),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(mockUsers.findByIdentifier).not.toHaveBeenCalled();
+    });
+    it("does not issue tokens to an inactive OTP account", async () => {
+      mockRedis.consumeOtp.mockResolvedValue(true);
+      mockUsers.findByIdentifier.mockResolvedValue({
+        id: "disabled",
+        isActive: false,
+      });
+      await expect(
+        service.verifyOtp({ email: "user@example.invalid", otp: "123456" }),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(mockJwt.sign).not.toHaveBeenCalled();
     });
   });
 });

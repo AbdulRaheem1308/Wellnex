@@ -1,4 +1,9 @@
-import { Injectable, OnModuleDestroy, Logger } from "@nestjs/common";
+import {
+  Injectable,
+  OnModuleDestroy,
+  Logger,
+  ServiceUnavailableException,
+} from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Redis } from "ioredis";
 
@@ -92,6 +97,10 @@ export class RedisService implements OnModuleDestroy {
     expiryMinutes: number,
   ): Promise<void> {
     if (!this.isRedisConnected()) {
+      if (this.isProduction)
+        throw new ServiceUnavailableException(
+          "OTP service temporarily unavailable",
+        );
       this.memoryStore.set(`otp:${identifier}`, {
         value: otp,
         expiry: Date.now() + expiryMinutes * 60 * 1000,
@@ -124,20 +133,82 @@ export class RedisService implements OnModuleDestroy {
     await this.client.del(key);
   }
 
-  // Rate limiting for OTP
-  async checkOtpRateLimit(identifier: string): Promise<boolean> {
-    if (!this.isRedisConnected()) return true; // Fail open for rate limits if Redis down
-
+  // Atomic verification prevents concurrent replay and caps guesses per code.
+  async consumeOtp(identifier: string, candidate: string): Promise<boolean> {
+    if (!this.isRedisConnected()) {
+      if (this.isProduction)
+        throw new ServiceUnavailableException(
+          "OTP service temporarily unavailable",
+        );
+      const key = `otp:${identifier}`;
+      const item = this.memoryStore.get(key);
+      if (!item || item.expiry <= Date.now()) return false;
+      const attemptsKey = `otp_attempts:${identifier}`;
+      const previous = this.memoryStore.get(attemptsKey);
+      const count =
+        (previous && previous.expiry > Date.now() ? previous.value : 0) + 1;
+      this.memoryStore.set(attemptsKey, { value: count, expiry: item.expiry });
+      const valid = count <= 5 && item.value === candidate;
+      if (valid || count >= 5) this.memoryStore.delete(key);
+      if (valid) this.memoryStore.delete(attemptsKey);
+      return valid;
+    }
     try {
-      const key = `otp_rate:${identifier}`;
-      const count = await this.client.incr(key);
-      if (count === 1) {
-        await this.client.expire(key, 3600); // 1 hour window
-      }
-      return count <= 5; // Max 5 OTP requests per hour
-    } catch (e: any) {
-      this.logger.warn("Redis checkOtpRateLimit error", e);
-      return true; // Fail open
+      const result = await this.client.eval(
+        `
+        local code = redis.call('GET', KEYS[1])
+        if not code then return 0 end
+        local attempts = redis.call('INCR', KEYS[2])
+        if attempts == 1 then
+          redis.call('EXPIRE', KEYS[2], math.max(1, redis.call('TTL', KEYS[1])))
+        end
+        if attempts > 5 then redis.call('DEL', KEYS[1]); return 0 end
+        if code ~= ARGV[1] then
+          if attempts >= 5 then redis.call('DEL', KEYS[1]) end
+          return 0
+        end
+        redis.call('DEL', KEYS[1], KEYS[2])
+        return 1
+      `,
+        2,
+        `otp:${identifier}`,
+        `otp_attempts:${identifier}`,
+        candidate,
+      );
+      return Number(result) === 1;
+    } catch {
+      throw new ServiceUnavailableException(
+        "OTP service temporarily unavailable",
+      );
+    }
+  }
+
+  // Shared per-recipient quota and resend cooldown. Never allow on Redis failure.
+  async checkOtpRateLimit(identifier: string): Promise<boolean> {
+    // Gmail dots/+aliases share one mailbox; normalize only the quota key.
+    const [local, domain] = identifier.toLowerCase().split("@");
+    if (domain === "gmail.com" || domain === "googlemail.com") {
+      identifier = `${local.split("+")[0].replaceAll(".", "")}@gmail.com`;
+    }
+    if (!this.isRedisConnected()) return false;
+    try {
+      const result = await this.client.eval(
+        `
+        if redis.call('EXISTS', KEYS[2]) == 1 then return 0 end
+        local count = redis.call('INCR', KEYS[1])
+        if count == 1 then redis.call('EXPIRE', KEYS[1], 3600) end
+        if count > 5 then return 0 end
+        redis.call('SET', KEYS[2], '1', 'EX', 60)
+        return 1
+      `,
+        2,
+        `otp_rate:${identifier}`,
+        `otp_send_cooldown:${identifier}`,
+      );
+      return Number(result) === 1;
+    } catch {
+      this.logger.warn("OTP rate limiter unavailable; request rejected");
+      return false;
     }
   }
 
@@ -178,7 +249,10 @@ export class RedisService implements OnModuleDestroy {
     return exists === 0; // true if no cooldown
   }
 
-  async setLoginCooldown(identifier: string, cooldownSeconds: number): Promise<void> {
+  async setLoginCooldown(
+    identifier: string,
+    cooldownSeconds: number,
+  ): Promise<void> {
     if (!this.isRedisConnected()) {
       this.memoryStore.set(`login_cooldown:${identifier}`, {
         value: "1",

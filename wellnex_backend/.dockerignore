@@ -15,3 +15,5 @@ complete_dump.json
 user_dump.txt
 performance
 *.tsbuildinfo
+test-smtp.js
+test

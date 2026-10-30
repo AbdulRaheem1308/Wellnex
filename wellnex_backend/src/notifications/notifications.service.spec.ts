@@ -38,7 +38,25 @@ describe("NotificationsService", () => {
   let mMessaging: any;
   let mResend: any;
 
+  const isolatedKeys = [
+    "FIREBASE_SERVICE_ACCOUNT_JSON",
+    "FIREBASE_PROJECT_ID",
+    "FIREBASE_CLIENT_EMAIL",
+    "FIREBASE_PRIVATE_KEY",
+    "RESEND_API_KEY",
+    "BREVO_API_KEY",
+  ];
+  const savedEnvironment = Object.fromEntries(
+    isolatedKeys.map((key) => [key, process.env[key]]),
+  );
+  afterAll(() => {
+    for (const key of isolatedKeys) {
+      if (savedEnvironment[key] === undefined) delete process.env[key];
+      else process.env[key] = savedEnvironment[key];
+    }
+  });
   beforeEach(async () => {
+    for (const key of isolatedKeys) delete process.env[key];
     jest.clearAllMocks();
     (admin as any).apps = [];
     mMessaging = admin.messaging();
@@ -64,6 +82,7 @@ describe("NotificationsService", () => {
               updateMany: jest.fn(),
               update: jest.fn(),
               delete: jest.fn(),
+              deleteMany: jest.fn(),
             },
           },
         },
@@ -318,17 +337,66 @@ describe("NotificationsService", () => {
     });
 
     it("should mark one as read", async () => {
-      (prismaService.notification.update as jest.Mock).mockResolvedValue({});
+      (prismaService.notification.updateMany as jest.Mock).mockResolvedValue({
+        count: 1,
+      });
       await service.markAsRead("u1", "n1");
-      expect(prismaService.notification.update).toHaveBeenCalled();
+      expect(prismaService.notification.updateMany).toHaveBeenCalledWith({
+        where: { id: "n1", userId: "u1" },
+        data: { isRead: true },
+      });
     });
   });
 
   describe("deleteNotification", () => {
     it("should delete one notification", async () => {
-      (prismaService.notification.delete as jest.Mock).mockResolvedValue({});
+      (prismaService.notification.deleteMany as jest.Mock).mockResolvedValue({
+        count: 1,
+      });
       await service.deleteNotification("u1", "n1");
-      expect(prismaService.notification.delete).toHaveBeenCalled();
+      expect(prismaService.notification.deleteMany).toHaveBeenCalledWith({
+        where: { id: "n1", userId: "u1" },
+      });
     });
+  });
+  it("rejects writes to another user's notification", async () => {
+    (prismaService.notification.updateMany as jest.Mock).mockResolvedValue({
+      count: 0,
+    });
+    (prismaService.notification.deleteMany as jest.Mock).mockResolvedValue({
+      count: 0,
+    });
+    await expect(
+      service.markAsRead("attacker", "victim-record"),
+    ).rejects.toThrow("Notification not found");
+    await expect(
+      service.deleteNotification("attacker", "victim-record"),
+    ).rejects.toThrow("Notification not found");
+    expect(prismaService.notification.updateMany).toHaveBeenCalledWith({
+      where: { id: "victim-record", userId: "attacker" },
+      data: { isRead: true },
+    });
+    expect(prismaService.notification.deleteMany).toHaveBeenCalledWith({
+      where: { id: "victim-record", userId: "attacker" },
+    });
+  });
+  it("falls back on a resolved Resend error object", async () => {
+    mResend.emails.send.mockResolvedValue({
+      data: null,
+      error: { message: "rejected" },
+    });
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+    expect(
+      await service.sendEmail("test@example.invalid", "test", "test"),
+    ).toBe(true);
+    expect(global.fetch).toHaveBeenCalled();
+  });
+  it("can send when only Brevo is configured", async () => {
+    (service as any).resendClient = null;
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+    expect(
+      await service.sendEmail("test@example.invalid", "test", "test"),
+    ).toBe(true);
+    expect(global.fetch).toHaveBeenCalled();
   });
 });

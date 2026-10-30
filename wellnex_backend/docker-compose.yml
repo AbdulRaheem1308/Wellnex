@@ -6,10 +6,10 @@ services:
     image: postgres:15-alpine
     environment:
       POSTGRES_USER: wellnex
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a strong database password}
       POSTGRES_DB: wellnex
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -22,7 +22,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redisdata:/data
     command: redis-server --save 60 1 --loglevel warning
@@ -39,13 +39,16 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://wellnex:password@postgres:5432/wellnex?schema=public
-      - DIRECT_URL=postgresql://wellnex:password@postgres:5432/wellnex?schema=public
+      - DATABASE_URL=${DATABASE_URL:?Set the database connection URL securely}
+      - DIRECT_URL=${DATABASE_URL:?Set the database connection URL securely}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - JWT_SECRET=wellnex-dev-jwt-secret-2024
-      - JWT_REFRESH_SECRET=wellnex-dev-jwt-refresh-secret-2024
-      - JWT_EXPIRY=7d
+      - JWT_SECRET=${JWT_SECRET:?Set a unique JWT signing secret}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:?Set a separate refresh signing secret}
+      - JWT_EXPIRY=15m
+      - ADMIN_API_KEY=${ADMIN_API_KEY:?Set the admin access key}
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      - BREVO_API_KEY=${BREVO_API_KEY:-}
       - PORT=3000
     depends_on:
       postgres:
@@ -60,13 +63,16 @@ services:
     build: .
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://wellnex:password@postgres:5432/wellnex?schema=public
-      - DIRECT_URL=postgresql://wellnex:password@postgres:5432/wellnex?schema=public
+      - DATABASE_URL=${DATABASE_URL:?Set the database connection URL securely}
+      - DIRECT_URL=${DATABASE_URL:?Set the database connection URL securely}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - JWT_SECRET=wellnex-dev-jwt-secret-2024
-      - JWT_REFRESH_SECRET=wellnex-dev-jwt-refresh-secret-2024
-      - JWT_EXPIRY=7d
+      - JWT_SECRET=${JWT_SECRET:?Set a unique JWT signing secret}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:?Set a separate refresh signing secret}
+      - JWT_EXPIRY=15m
+      - ADMIN_API_KEY=${ADMIN_API_KEY:?Set the admin access key}
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      - BREVO_API_KEY=${BREVO_API_KEY:-}
       # Set a flag that our app could read to only boot workers
       - WORKER_MODE=true
     depends_on:
@@ -80,9 +86,9 @@ services:
     image: dpage/pgadmin4
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@wellnex.com
-      PGADMIN_DEFAULT_PASSWORD: adminpassword
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:?Set a strong pgAdmin password}
     ports:
-      - "5050:80"
+      - "127.0.0.1:5050:80"
     depends_on:
       postgres:
         condition: service_healthy

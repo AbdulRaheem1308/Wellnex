@@ -1,20 +1,24 @@
-const nodemailer = require("nodemailer");
-
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false, // true for 465, false for other ports
-  auth: {
-    user: "stepify.app@gmail.com",
-    pass: "tycb dfdx hdho czua",
-  },
-});
-
-console.log("Testing connection...");
-transporter.verify(function (error, success) {
-  if (error) {
-    console.log("Connection error:", error);
-  } else {
-    console.log("Server is ready to take our messages");
+// Optional diagnostic only. Never commit credentials or run this automatically.
+// The previously committed Gmail app password must be revoked independently.
+async function verifySmtp(env = process.env, loadMailer = () => require("nodemailer")) {
+  const user = env.SMTP_USER;
+  const pass = env.SMTP_PASS;
+  if (!user || !pass) {
+    throw new Error("Set SMTP_USER and SMTP_PASS securely before running this diagnostic.");
   }
-});
+  const transporter = loadMailer().createTransport({
+    host: "smtp.gmail.com", port: 587, secure: false, requireTLS: true,
+    auth: { user, pass },
+  });
+  try { await transporter.verify(); } finally { transporter.close(); }
+}
+if (require.main === module) {
+  verifySmtp().then(
+    () => console.log("SMTP connection verified. No message was sent."),
+    () => {
+      console.error("SMTP verification failed. Check configuration privately.");
+      process.exitCode = 1;
+    },
+  );
+}
+module.exports = { verifySmtp };

@@ -48,3 +48,8 @@ wellnex_backend/dist/
 pgsql/
 *.zip
 *.dump
+
+# Private signing material and local signing configuration
+*.jks
+*.keystore
+**/key.properties
